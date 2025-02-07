@@ -13,9 +13,9 @@ def consent():
     return render_template("consent.html", selected=selected)
 
 # 정적 파일 (PDF) 제공 라우트
-@app.route('/static/pdfs/<path:filename>')
+@app.route('/static/pdfs/<filename>')
 def serve_pdf(filename):
-    return send_from_directory(os.path.join(app.static_folder, "pdfs"), filename)
+    return send_from_directory('static/pdfs', filename)
 
 if __name__ == '__main__':
     app.run(debug=True)

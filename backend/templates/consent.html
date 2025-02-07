@@ -6,7 +6,7 @@
     <title>전자 동의서 확인</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/4.6.0/fabric.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.2.4/fabric.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -50,11 +50,15 @@
         .canvas-wrapper {
             position: relative;
             margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            max-width: 100%;
         }
         canvas {
             border: 1px solid black;
-            width: 100%;
+            width: auto;
             height: auto;
+            position: relative;
         }
     </style>
 </head>
@@ -85,63 +89,84 @@
             return params.get("selected");
         }
 
+        window.onload = function() {
+            let checkFabric = setInterval(() => {
+                if (typeof fabric !== "undefined") {
+                    console.log("✅ Fabric.js 로드 완료!");
+                    clearInterval(checkFabric);
+                    loadPdf(); // Fabric.js가 로드된 후 PDF 불러오기 실행
+                } else {
+                    console.warn("⏳ Fabric.js 로드 대기 중...");
+                }
+            }, 500); // 0.5초 간격으로 Fabric.js가 로드될 때까지 대기
+        };
+
         async function loadPdf() {
-    let selectedParams = getQueryParams();
-    if (!selectedParams) {
-        alert("선택된 동의서가 없습니다.");
-        window.location.href = "/";
-        return;
-    }
+            let selectedParams = getQueryParams();
+            if (!selectedParams) {
+                alert("선택된 동의서가 없습니다.");
+                window.location.href = "/";
+                return;
+            }
 
-    let selectedList = selectedParams.split(",");
-    let pdfContainer = document.getElementById("pdf-container");
-    pdfContainer.innerHTML = "";
+            let selectedList = selectedParams.split(",");
+            let pdfContainer = document.getElementById("pdf-container");
+            pdfContainer.innerHTML = "";
 
-    for (const pdfUrl of selectedList) {
-        let loadingTask = pdfjsLib.getDocument(`/static/pdfs/${pdfUrl}_consent.pdf`);
-        let pdf = await loadingTask.promise;
+            for (const pdfUrl of selectedList) {
+                let loadingTask = pdfjsLib.getDocument(`/static/pdfs/${pdfUrl}_consent.pdf`);
+                let pdf = await loadingTask.promise;
 
-        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-            let page = await pdf.getPage(pageNum);
-            let canvasWrapper = document.createElement("div");
-            canvasWrapper.className = "canvas-wrapper";
-            canvasWrapper.style.position = "relative";
+                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                    let page = await pdf.getPage(pageNum);
+                    let viewport = page.getViewport({ scale: 1.34 });
 
-            let canvas = document.createElement("canvas");
-            let fabricCanvasEl = document.createElement("canvas");
+                    let canvasWrapper = document.createElement("div");
+                    canvasWrapper.className = "canvas-wrapper";
+                    canvasWrapper.style.position = "relative";
+                    canvasWrapper.style.display = "flex";
+                    canvasWrapper.style.justifyContent = "center";
 
-            let viewport = page.getViewport({ scale: 1.5 });
-            canvas.width = fabricCanvasEl.width = viewport.width;
-            canvas.height = fabricCanvasEl.height = viewport.height;
+                    let canvas = document.createElement("canvas");
+                    let overlayCanvas = document.createElement("canvas");
 
-            let context = canvas.getContext("2d");
-            let renderContext = { canvasContext: context, viewport: viewport };
-            await page.render(renderContext).promise;
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+                    canvas.style.width = `${viewport.width}px`; // "100%" or `${viewport.width}px`
+                    canvas.style.height = `${viewport.height}px`; // "auto" or `${viewport.height}px`
+                    
+                    overlayCanvas.width = canvas.width;
+                    overlayCanvas.height = canvas.height;
+                    overlayCanvas.style.width = canvas.style.width;
+                    overlayCanvas.style.height = canvas.style.height;
+                    overlayCanvas.style.position = "absolute";
+                    overlayCanvas.style.top = "0";
+                    overlayCanvas.style.left = "0";
+                    overlayCanvas.style.pointerEvents = "auto";
+                    overlayCanvas.style.zIndex = "10";
+                    
+                    let context = canvas.getContext("2d");
+                    let renderContext = { canvasContext: context, viewport: viewport };
+                    await page.render(renderContext).promise;
 
-            fabricCanvasEl.style.position = "absolute";
-            fabricCanvasEl.style.top = "0";
-            fabricCanvasEl.style.left = "0";
-            fabricCanvasEl.style.pointerEvents = "auto";
+                    let fabricCanvas = new fabric.Canvas(overlayCanvas);
+                    fabricCanvas.setWidth(canvas.width);
+                    fabricCanvas.setHeight(canvas.height);
+                    fabricCanvas.isDrawingMode = true;
+                    fabricCanvas.freeDrawingBrush.color = "black";
+                    fabricCanvas.freeDrawingBrush.width = 2;
 
-            // Fabric.js 캔버스 생성
-            let fabricCanvas = new fabric.Canvas(fabricCanvasEl);
-            fabricCanvas.isDrawingMode = true;
-            fabricCanvas.freeDrawingBrush.color = "black";
-            fabricCanvas.freeDrawingBrush.width = 2;
-
-            canvasWrapper.appendChild(canvas);
-            canvasWrapper.appendChild(fabricCanvasEl);
-            pdfContainer.appendChild(canvasWrapper);
+                    canvasWrapper.appendChild(canvas);
+                    canvasWrapper.appendChild(overlayCanvas);
+                    pdfContainer.appendChild(canvasWrapper);
+                }
+            }
         }
-    }
-}
 
         function setTool(tool) {
             activeTool = tool;
             alert("선택한 도구: " + tool);
         }
-
-        window.onload = loadPdf;
     </script>
 </body>
 </html>

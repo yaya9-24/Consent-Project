@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>전자 동의서 확인</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/4.6.0/fabric.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 40px;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            background-color: #f9f9f9;
+            position: relative;
+        }
+        .toolbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: #333;
+            padding: 10px;
+            text-align: left;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+        .toolbar button {
+            padding: 8px 12px;
+            border: none;
+            cursor: pointer;
+            background-color: #007BFF;
+            color: white;
+            border-radius: 5px;
+        }
+        .pdf-container {
+            margin-top: 60px;
+            padding-top: 10px;
+            position: relative;
+        }
+        .canvas-wrapper {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        canvas {
+            border: 1px solid black;
+            width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <button onclick="setTool('cursor')">커서</button>
+        <button onclick="setTool('highlight')">형광펜</button>
+        <button onclick="setTool('pen')">펜</button>
+        <button onclick="setTool('memo')">메모</button>
+    </div>
+    
+    <div class="container">
+        <h1>선택한 전자 동의서</h1>
+        <p>아래에서 선택한 동의서를 확인하세요.</p>
+        <div id="pdf-container" class="pdf-container"></div>
+        <br>
+        <a href="/">이전으로 돌아가기</a>
+    </div>
+
+    <script>
+        var pdfjsLib = window['pdfjs-dist/build/pdf'];
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
+        
+        let activeTool = "cursor";
+
+        function getQueryParams() {
+            let params = new URLSearchParams(window.location.search);
+            return params.get("selected");
+        }
+
+        async function loadPdf() {
+    let selectedParams = getQueryParams();
+    if (!selectedParams) {
+        alert("선택된 동의서가 없습니다.");
+        window.location.href = "/";
+        return;
+    }
+
+    let selectedList = selectedParams.split(",");
+    let pdfContainer = document.getElementById("pdf-container");
+    pdfContainer.innerHTML = "";
+
+    for (const pdfUrl of selectedList) {
+        let loadingTask = pdfjsLib.getDocument(`/static/pdfs/${pdfUrl}_consent.pdf`);
+        let pdf = await loadingTask.promise;
+
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+            let page = await pdf.getPage(pageNum);
+            let canvasWrapper = document.createElement("div");
+            canvasWrapper.className = "canvas-wrapper";
+            canvasWrapper.style.position = "relative";
+
+            let canvas = document.createElement("canvas");
+            let fabricCanvasEl = document.createElement("canvas");
+
+            let viewport = page.getViewport({ scale: 1.5 });
+            canvas.width = fabricCanvasEl.width = viewport.width;
+            canvas.height = fabricCanvasEl.height = viewport.height;
+
+            let context = canvas.getContext("2d");
+            let renderContext = { canvasContext: context, viewport: viewport };
+            await page.render(renderContext).promise;
+
+            fabricCanvasEl.style.position = "absolute";
+            fabricCanvasEl.style.top = "0";
+            fabricCanvasEl.style.left = "0";
+            fabricCanvasEl.style.pointerEvents = "auto";
+
+            // Fabric.js 캔버스 생성
+            let fabricCanvas = new fabric.Canvas(fabricCanvasEl);
+            fabricCanvas.isDrawingMode = true;
+            fabricCanvas.freeDrawingBrush.color = "black";
+            fabricCanvas.freeDrawingBrush.width = 2;
+
+            canvasWrapper.appendChild(canvas);
+            canvasWrapper.appendChild(fabricCanvasEl);
+            pdfContainer.appendChild(canvasWrapper);
+        }
+    }
+}
+
+        function setTool(tool) {
+            activeTool = tool;
+            alert("선택한 도구: " + tool);
+        }
+
+        window.onload = loadPdf;
+    </script>
+</body>
+</html>

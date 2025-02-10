@@ -1,172 +1,351 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>전자 동의서 확인</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.2.4/fabric.min.js"></script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 40px;
-        }
-        .container {
-            max-width: 800px;
-            margin: auto;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            background-color: #f9f9f9;
-            position: relative;
-        }
-        .toolbar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            background: #333;
-            padding: 10px;
-            text-align: left;
-            display: flex;
-            gap: 10px;
-            z-index: 1000;
-        }
-        .toolbar button {
-            padding: 8px 12px;
-            border: none;
-            cursor: pointer;
-            background-color: #007BFF;
-            color: white;
-            border-radius: 5px;
-        }
-        .pdf-container {
-            margin-top: 60px;
-            padding-top: 10px;
-            position: relative;
-        }
-        .canvas-wrapper {
-            position: relative;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: center;
-            max-width: 100%;
-        }
-        canvas {
-            border: 1px solid black;
-            width: auto;
-            height: auto;
-            position: relative;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>전자 동의서 - 형광펜 투명도 수정</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.2.4/fabric.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 40px;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      background-color: #f9f9f9;
+      position: relative;
+    }
+    .pdf-container {
+      margin-top: 20px;
+      padding: 0;
+      position: relative;
+    }
+    .canvas-wrapper {
+      position: relative;
+      margin-bottom: 20px;
+    }
+    canvas {
+      border: 1px solid black;
+    }
+    .toolbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: #333;
+      padding: 10px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      z-index: 1000;
+    }
+    .toolbar button {
+      padding: 8px;
+      border: none;
+      cursor: pointer;
+      background-color: #007BFF;
+      color: white;
+      border-radius: 5px;
+    }
+    #settings-panel {
+      margin-top: 60px;
+      text-align: center;
+    }
+    #settings-panel > div {
+      display: none;
+      margin-bottom: 10px;
+    }
+    .add-consent-button {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 10px 15px;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      z-index: 1000;
+    }
+  </style>
 </head>
 <body>
-    <div class="toolbar">
-        <button onclick="setTool('cursor')">커서</button>
-        <button onclick="setTool('highlight')">형광펜</button>
-        <button onclick="setTool('pen')">펜</button>
-        <button onclick="setTool('memo')">메모</button>
+  <div class="toolbar">
+    <button onclick="setTool('cursor')">커서</button>
+    <button onclick="setTool('pen')">펜</button>
+    <button onclick="setTool('highlight')">형광펜</button>
+    <button onclick="setTool('text')">텍스트 입력</button>
+    <button onclick="setTool('eraser')">지우개</button>
+  </div>
+  
+  <!-- 설정 패널 -->
+  <div id="settings-panel">
+    <div id="pen-settings">
+      <label>펜 두께: 
+        <input type="range" id="pen-thickness" min="1" max="20" value="5">
+      </label>
     </div>
+    <div id="highlight-settings">
+      <label>형광펜 두께: 
+        <input type="range" id="highlight-thickness" min="1" max="20" value="6">
+      </label>
+      &nbsp;&nbsp;
+      <label>형광펜 투명도: 
+        <input type="range" id="highlight-opacity" min="0" max="1" step="0.1" value="0.5">
+      </label>
+    </div>
+  </div>
+  
+  <div class="container">
+    <h1>전자 동의서</h1>
+    <p>아래에서 기본 동의서를 확인하세요.</p>
+    <div id="pdf-container" class="pdf-container"></div>
+    <br>
+    <a href="/">이전으로 돌아가기</a>
+  </div>
+  
+  <button class="add-consent-button" onclick="addConsent()">동의서 추가</button>
+  
+  <script>
+    /* ----- PencilBrush의 createPath 오버라이드 (opacity 적용) ----- */
+    if (fabric.PencilBrush) {
+      fabric.PencilBrush.prototype.createPath = function(pathData) {
+        // 기존에 설정된 strokeLineCap, strokeLineJoin 값도 사용 (없으면 기본값 적용)
+        var path = new fabric.Path(pathData, {
+          fill: null,
+          stroke: this.color,
+          strokeWidth: this.width,
+          opacity: this.opacity, // opacity 값을 경로에 적용
+          strokeLineCap: this.strokeLineCap || 'round',
+          strokeLineJoin: this.strokeLineJoin || 'round'
+        });
+        return path;
+      };
+    }
+
+    // PDF.js 설정
+    var pdfjsLib = window['pdfjs-dist/build/pdf'];
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
     
-    <div class="container">
-        <h1>선택한 전자 동의서</h1>
-        <p>아래에서 선택한 동의서를 확인하세요.</p>
-        <div id="pdf-container" class="pdf-container"></div>
-        <br>
-        <a href="/">이전으로 돌아가기</a>
-    </div>
-
-    <script>
-        var pdfjsLib = window['pdfjs-dist/build/pdf'];
-        pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
-        
-        let activeTool = "cursor";
-
-        function getQueryParams() {
-            let params = new URLSearchParams(window.location.search);
-            return params.get("selected");
-        }
-
-        window.onload = function() {
-            let checkFabric = setInterval(() => {
-                if (typeof fabric !== "undefined") {
-                    console.log("✅ Fabric.js 로드 완료!");
-                    clearInterval(checkFabric);
-                    loadPdf(); // Fabric.js가 로드된 후 PDF 불러오기 실행
-                } else {
-                    console.warn("⏳ Fabric.js 로드 대기 중...");
-                }
-            }, 500); // 0.5초 간격으로 Fabric.js가 로드될 때까지 대기
-        };
-
-        async function loadPdf() {
-            let selectedParams = getQueryParams();
-            if (!selectedParams) {
-                alert("선택된 동의서가 없습니다.");
-                window.location.href = "/";
-                return;
+    // 초기 도구는 "cursor"로 설정 (drawing mode 비활성화)
+    let activeTool = "cursor";
+    let selectedConsents = ["basic_consent"];
+    let pdfContainer = document.getElementById("pdf-container");
+    let fabricCanvases = [];
+    
+    function loadPdf(consent) {
+      let loadingTask = pdfjsLib.getDocument(`/static/pdfs/${consent}.pdf`);
+      loadingTask.promise.then(pdf => {
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          pdf.getPage(pageNum).then(page => {
+            let viewport = page.getViewport({ scale: 1.34 });
+            
+            let canvasWrapper = document.createElement("div");
+            canvasWrapper.className = "canvas-wrapper";
+            canvasWrapper.style.width = viewport.width + "px";
+            canvasWrapper.style.height = viewport.height + "px";
+    
+            let pdfCanvas = document.createElement("canvas");
+            pdfCanvas.width = viewport.width;
+            pdfCanvas.height = viewport.height;
+            pdfCanvas.style.position = "absolute";
+            pdfCanvas.style.top = "0";
+            pdfCanvas.style.left = "0";
+            pdfCanvas.style.pointerEvents = "none";
+    
+            let overlayCanvas = document.createElement("canvas");
+            overlayCanvas.width = viewport.width;
+            overlayCanvas.height = viewport.height;
+            overlayCanvas.style.position = "absolute";
+            overlayCanvas.style.top = "0";
+            overlayCanvas.style.left = "0";
+            overlayCanvas.style.pointerEvents = "auto";
+            overlayCanvas.style.zIndex = "100";
+            overlayCanvas.style.touchAction = "none";
+    
+            let context = pdfCanvas.getContext("2d");
+            page.render({ canvasContext: context, viewport: viewport });
+    
+            canvasWrapper.appendChild(pdfCanvas);
+            canvasWrapper.appendChild(overlayCanvas);
+            pdfContainer.appendChild(canvasWrapper);
+    
+            let fabricCanvas = new fabric.Canvas(overlayCanvas);
+            fabricCanvas.on('mouse:down', function(e) {
+              fabricCanvas.calcOffset();
+            });
+            fabricCanvas.on('path:created', function(event) {
+              console.log("path created:", event.path);
+            });
+    
+            // 초기 activeTool이 cursor이므로 drawing mode는 off
+            if (activeTool === "pen") {
+              fabricCanvas.isDrawingMode = true;
+              let penThickness = document.getElementById("pen-thickness").value;
+              fabricCanvas.freeDrawingBrush = new fabric.PencilBrush(fabricCanvas);
+              fabricCanvas.freeDrawingBrush.color = "black";
+              fabricCanvas.freeDrawingBrush.width = parseFloat(penThickness);
+              fabricCanvas.freeDrawingBrush.opacity = 1;
+            } else if (activeTool === "highlight") {
+              fabricCanvas.isDrawingMode = true;
+              let highlightThickness = document.getElementById("highlight-thickness").value;
+              let highlightOpacity = document.getElementById("highlight-opacity").value;
+              fabricCanvas.freeDrawingBrush = new fabric.PencilBrush(fabricCanvas);
+              fabricCanvas.freeDrawingBrush.color = "yellow";
+              fabricCanvas.freeDrawingBrush.width = parseFloat(highlightThickness);
+              fabricCanvas.freeDrawingBrush.opacity = parseFloat(highlightOpacity);
+            } else {
+              fabricCanvas.isDrawingMode = false;
             }
+    
+            fabricCanvas.calcOffset();
+            fabricCanvases.push(fabricCanvas);
+          });
+        }
+      }).catch(error => {
+        console.error("PDF 로드 에러:", error);
+      });
+    }
+    
+    function setTool(tool) {
+      activeTool = tool;
+      console.log("선택된 도구:", tool);
+      
+      if (tool === "pen") {
+        document.getElementById("pen-settings").style.display = "inline-block";
+        document.getElementById("highlight-settings").style.display = "none";
+      } else if (tool === "highlight") {
+        document.getElementById("pen-settings").style.display = "none";
+        document.getElementById("highlight-settings").style.display = "inline-block";
+      } else {
+        document.getElementById("pen-settings").style.display = "none";
+        document.getElementById("highlight-settings").style.display = "none";
+      }
+      
+      fabricCanvases.forEach(function(fabricCanvas) {
+        if (tool === "pen") {
+          fabricCanvas.isDrawingMode = false;
+          fabricCanvas.freeDrawingBrush = new fabric.PencilBrush(fabricCanvas);
+          let penThickness = document.getElementById("pen-thickness").value;
+          fabricCanvas.freeDrawingBrush.color = "black";
+          fabricCanvas.freeDrawingBrush.width = parseFloat(penThickness);
+          fabricCanvas.freeDrawingBrush.opacity = 1;
+          fabricCanvas.isDrawingMode = true;
+        } else if (tool === "highlight") {
+          fabricCanvas.isDrawingMode = false;
+          fabricCanvas.freeDrawingBrush = new fabric.PencilBrush(fabricCanvas);
+          let highlightThickness = document.getElementById("highlight-thickness").value;
+          let highlightOpacity = document.getElementById("highlight-opacity").value;
+          fabricCanvas.freeDrawingBrush.color = "orange";
+          fabricCanvas.freeDrawingBrush.width = parseFloat(highlightThickness);
+          fabricCanvas.freeDrawingBrush.opacity = parseFloat(highlightOpacity);
+          fabricCanvas.isDrawingMode = true;
+        } else if (tool === "text") {
+          fabricCanvas.isDrawingMode = false;
+          let text = new fabric.IText("텍스트 입력", {
+            left: 50,
+            top: 50,
+            fontSize: 16,
+            fill: "black"
+          });
+          fabricCanvas.add(text);
+        } else if (tool === "eraser") {
+          fabricCanvas.isDrawingMode = false;
+          fabricCanvas.clear();
+        } else {
+          fabricCanvas.isDrawingMode = false;
+        }
+        fabricCanvas.calcOffset();
+        fabricCanvas.renderAll();
+      });
+    }
+    
+    document.getElementById("pen-thickness").addEventListener("input", function(){
+      let thickness = parseFloat(this.value);
+      fabricCanvases.forEach(function(canvas) {
+        if (activeTool === "pen") {
+          canvas.isDrawingMode = false;
+          canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+          canvas.freeDrawingBrush.color = "black";
+          canvas.freeDrawingBrush.width = thickness;
+          canvas.freeDrawingBrush.opacity = 1;
+          canvas.isDrawingMode = true;
+          canvas.calcOffset();
+          canvas.renderAll();
+        }
+      });
+    });
+    
+    document.getElementById("highlight-thickness").addEventListener("input", function(){
+      let thickness = parseFloat(this.value);
+      fabricCanvases.forEach(function(canvas) {
+        if (activeTool === "highlight") {
+          canvas.isDrawingMode = false;
+          canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+          canvas.freeDrawingBrush.color = "yellow";
+          canvas.freeDrawingBrush.width = thickness;
+          canvas.freeDrawingBrush.opacity = parseFloat(document.getElementById("highlight-opacity").value);
+          canvas.isDrawingMode = true;
+          canvas.calcOffset();
+          canvas.renderAll();
+        }
+      });
+    });
+    
+    document.getElementById("highlight-opacity").addEventListener("input", function(){
+      let opacityValue = parseFloat(this.value);
+      fabricCanvases.forEach(function(canvas) {
+        if (activeTool === "highlight") {
+          canvas.isDrawingMode = false;
+          canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+          canvas.freeDrawingBrush.color = "yellow";
+          canvas.freeDrawingBrush.width = parseFloat(document.getElementById("highlight-thickness").value);
+          canvas.freeDrawingBrush.opacity = opacityValue;
+          canvas.isDrawingMode = true;
+          canvas.calcOffset();
+          canvas.renderAll();
+        }
+      });
+    });
+    
+    window.addEventListener("resize", function(){
+      fabricCanvases.forEach(function(canvas) {
+        canvas.calcOffset();
+      });
+    });
+    
+    function addConsent() {
+      alert("추가할 동의서를 선택하는 기능을 구현해야 합니다.");
+    }
+    
+    window.onload = function() {
+      selectedConsents.forEach(consent => loadPdf(consent));
+    };
 
-            let selectedList = selectedParams.split(",");
-            let pdfContainer = document.getElementById("pdf-container");
-            pdfContainer.innerHTML = "";
-
-            for (const pdfUrl of selectedList) {
-                let loadingTask = pdfjsLib.getDocument(`/static/pdfs/${pdfUrl}_consent.pdf`);
-                let pdf = await loadingTask.promise;
-
-                for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-                    let page = await pdf.getPage(pageNum);
-                    let viewport = page.getViewport({ scale: 1.34 });
-
-                    let canvasWrapper = document.createElement("div");
-                    canvasWrapper.className = "canvas-wrapper";
-                    canvasWrapper.style.position = "relative";
-                    canvasWrapper.style.display = "flex";
-                    canvasWrapper.style.justifyContent = "center";
-
-                    let canvas = document.createElement("canvas");
-                    let overlayCanvas = document.createElement("canvas");
-
-                    canvas.width = viewport.width;
-                    canvas.height = viewport.height;
-                    canvas.style.width = `${viewport.width}px`; // "100%" or `${viewport.width}px`
-                    canvas.style.height = `${viewport.height}px`; // "auto" or `${viewport.height}px`
-                    
-                    overlayCanvas.width = canvas.width;
-                    overlayCanvas.height = canvas.height;
-                    overlayCanvas.style.width = canvas.style.width;
-                    overlayCanvas.style.height = canvas.style.height;
-                    overlayCanvas.style.position = "absolute";
-                    overlayCanvas.style.top = "0";
-                    overlayCanvas.style.left = "0";
-                    overlayCanvas.style.pointerEvents = "auto";
-                    overlayCanvas.style.zIndex = "10";
-                    
-                    let context = canvas.getContext("2d");
-                    let renderContext = { canvasContext: context, viewport: viewport };
-                    await page.render(renderContext).promise;
-
-                    let fabricCanvas = new fabric.Canvas(overlayCanvas);
-                    fabricCanvas.setWidth(canvas.width);
-                    fabricCanvas.setHeight(canvas.height);
-                    fabricCanvas.isDrawingMode = true;
-                    fabricCanvas.freeDrawingBrush.color = "black";
-                    fabricCanvas.freeDrawingBrush.width = 2;
-
-                    canvasWrapper.appendChild(canvas);
-                    canvasWrapper.appendChild(overlayCanvas);
-                    pdfContainer.appendChild(canvasWrapper);
-                }
+    document.addEventListener('keydown', function(e) {
+    // Delete 키 또는 Backspace 키를 누른 경우
+        if (e.key === "Delete" || e.key === "Backspace") {
+            fabricCanvases.forEach(function(canvas) {
+            // 다중 선택 지원: 선택된 객체들을 배열로 가져옴
+            let activeObjects = canvas.getActiveObjects();
+            if (activeObjects.length > 0) {
+                activeObjects.forEach(function(obj) {
+                canvas.remove(obj);
+                });
+                // 삭제 후 활성 객체 선택 해제
+                canvas.discardActiveObject();
+                canvas.requestRenderAll(); // 또는 canvas.renderAll();
             }
+            });
         }
-
-        function setTool(tool) {
-            activeTool = tool;
-            alert("선택한 도구: " + tool);
-        }
-    </script>
+    });
+  </script>
 </body>
 </html>

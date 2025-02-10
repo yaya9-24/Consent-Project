@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>환자 병명 설문지</title>
+    <title>환자 병명 확인</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -18,7 +18,13 @@
             border-radius: 10px;
             background-color: #f9f9f9;
         }
-        .checkbox-group {
+        .info-box {
+            background-color: #e0e0e0;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+        }
+        .disease-list {
             text-align: left;
         }
         button {
@@ -30,87 +36,30 @@
             border-radius: 5px;
             cursor: pointer;
         }
-        .info-box {
-            background-color: #e0e0e0;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 30px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        table, th, td {
-            border: 1px solid #ddd;
-        }
-        th, td {
-            padding: 8px;
-            text-align: left;
-        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>환자 병명 설문지</h1>
+        <h1>환자 병명 확인</h1>
         <div class="info-box">
             <h3>환자 기본 정보</h3>
-            <table>
-                <tr>
-                    <th>이름</th>
-                    <td>홍길동</td>
-                    <th>성별</th>
-                    <td>남</td>
-                </tr>
-                <tr>
-                    <th>나이</th>
-                    <td>45세</td>
-                    <th>휴대폰 번호</th>
-                    <td>010-1234-5678</td>
-                </tr>
-                <tr>
-                    <th>주소</th>
-                    <td colspan="3">서울특별시 강남구</td>
-                </tr>
-                <tr>
-                    <th>진단명</th>
-                    <td colspan="3">고혈압, 당뇨병</td>
-                </tr>
-                <tr>
-                    <th>주치의 및 시술의</th>
-                    <td colspan="3">김철수 교수</td>
-                </tr>
-            </table>
+            <p><strong>이름:</strong> 홍길동 | <strong>성별:</strong> 남 | <strong>나이:</strong> 45세</p>
+            <p><strong>휴대폰 번호:</strong> 010-1234-5678</p>
+            <p><strong>주소:</strong> 서울특별시 강남구</p>
+            <p><strong>진단명:</strong> 고혈압, 당뇨병</p>
+            <p><strong>주치의 및 시술의:</strong> 김철수 교수</p>
         </div>
-        <p>필요한 동의서를 선택하세요:</p>
-        <form id="consent-form">
-            <div class="checkbox-group">
-                <label><input type="checkbox" name="consent" value="diabetes"> 당뇨병</label><br>
-                <label><input type="checkbox" name="consent" value="hypertension"> 고혈압</label><br>
-                <label><input type="checkbox" name="consent" value="hyperlipidemia"> 고지혈증</label><br>
-                <label><input type="checkbox" name="consent" value="cardiovascular"> 심혈관질환</label><br>
-                <label><input type="checkbox" name="consent" value="cerebrovascular"> 뇌혈관질환</label><br>
-                <label><input type="checkbox" name="consent" value="respiratory"> 호흡기질환</label><br>
-                <label><input type="checkbox" name="consent" value="surgery"> 수술 동의서</label><br>
-                <label><input type="checkbox" name="consent" value="anesthesia"> 마취 동의서</label><br>
-            </div>
-            <button type="button" onclick="submitForm()">동의서 확인</button>
-        </form>
+        <h3>환자의 기저 질환</h3>
+        <div class="disease-list">
+            <p>✔ 질병 1: 당뇨병</p>
+            <p>✔ 질병 2: 고혈압</p>
+            <p>✔ 질병 3: 심혈관질환</p>
+        </div>
+        <button onclick="proceedToConsent()">다음</button>
     </div>
-
     <script>
-        function submitForm() {
-            let selectedValues = [];
-            document.querySelectorAll('input[name="consent"]:checked').forEach((checkbox) => {
-                selectedValues.push(checkbox.value);
-            });
-
-            if (selectedValues.length === 0) {
-                alert("최소 하나의 동의서를 선택하세요.");
-                return;
-            }
-
-            // 선택된 항목을 쿼리 파라미터로 전달하여 consent 페이지로 이동
-            window.location.href = "/consent?selected=" + selectedValues.join(",");
+        function proceedToConsent() {
+            window.location.href = "/consent?selected=diabetes,hypertension,cardiovascular";
         }
     </script>
 </body>

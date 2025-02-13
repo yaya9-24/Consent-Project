@@ -9,8 +9,8 @@ def index():
 
 @app.route('/consent')
 def consent():
-    selected = request.args.get("selected", "").split(",")
-    return render_template("consent.html", selected=selected)
+    # selected = request.args.get("selected", "").split(",")
+    return render_template("consent.html")
 
 # 정적 파일 (PDF) 제공 라우트
 @app.route('/static/pdfs/<filename>')

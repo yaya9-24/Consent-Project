@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>관리자 페이지 - 서명 영역 지정</title>
+  <!-- PDF.js 및 Fabric.js 라이브러리 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.2.4/fabric.min.js"></script>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      text-align: center; 
+      margin: 20px; 
+    }
+    /* PDF와 Fabric 캔버스가 들어갈 컨테이너 */
+    #pdf-wrapper { 
+      position: relative; 
+      display: inline-block; 
+      border: 1px solid #ddd; 
+    }
+    /* PDF 캔버스: 가장 아래, 이벤트 차단 */
+    #pdf-canvas { 
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+      z-index: 0; 
+      pointer-events: none; 
+    }
+    /* Fabric 캔버스: PDF 위에 표시, 상호작용 가능 */
+    #fabric-canvas { 
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+      z-index: 10; 
+    }
+    #controls { margin-top: 10px; }
+    #save-btn { 
+      padding: 8px 12px; 
+      background: #28a745; 
+      color: white; 
+      border: none; 
+      border-radius: 5px; 
+      cursor: pointer; 
+    }
+  </style>
+</head>
+<body>
+  <h1>관리자 페이지 - 서명 영역 지정</h1>
+  <p>아래 PDF 템플릿에서 서명 영역을 지정하세요.</p>
+  <!-- PDF 및 캔버스 래퍼 -->
+  <div id="pdf-wrapper">
+    <canvas id="pdf-canvas"></canvas>
+    <canvas id="fabric-canvas"></canvas>
+  </div>
+  <div id="controls">
+    <button id="add-sign-btn">서명 영역 추가</button>
+    <button id="save-btn">저장</button>
+  </div>
+  
+  <script>
+    // PDF.js 설정
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
+    
+    const pdfUrl = '/static/pdfs/관상동맥우회술 동의서.pdf'; // PDF 템플릿 파일 경로
+    const pdfCanvas = document.getElementById("pdf-canvas");
+    const fabricCanvasEl = document.getElementById("fabric-canvas");
+    const pdfWrapper = document.getElementById("pdf-wrapper");
+    
+    // PDF 페이지 렌더링 (첫 페이지만 로드)
+    pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
+      pdf.getPage(1).then(page => {
+        const scale = 1.5;
+        const viewport = page.getViewport({ scale: scale });
+        
+        // PDF 캔버스 해상도 및 CSS 크기 설정
+        pdfCanvas.width = viewport.width;
+        pdfCanvas.height = viewport.height;
+        pdfCanvas.style.width = viewport.width + "px";
+        pdfCanvas.style.height = viewport.height + "px";
+        
+        // Fabric 캔버스 해상도 및 CSS 크기 설정
+        fabricCanvasEl.width = viewport.width;
+        fabricCanvasEl.height = viewport.height;
+        fabricCanvasEl.style.width = viewport.width + "px";
+        fabricCanvasEl.style.height = viewport.height + "px";
+        
+        // 부모 컨테이너 크기 설정
+        pdfWrapper.style.width = viewport.width + "px";
+        pdfWrapper.style.height = viewport.height + "px";
+        
+        // PDF 렌더링
+        const context = pdfCanvas.getContext("2d");
+        page.render({ canvasContext: context, viewport: viewport });
+        
+        // Fabric 캔버스 생성 (선택 모드 활성화)
+        window.fabricCanvas = new fabric.Canvas("fabric-canvas", { selection: true });
+        window.fabricCanvas.isDrawingMode = false;
+      });
+    });
+    
+    // "서명 영역 추가" 버튼: 드래그 가능한 직사각형 추가 (선택 모드 활성)
+    document.getElementById("add-sign-btn").addEventListener("click", function(){
+      // 드로잉 모드 해제 및 선택 모드 활성
+      window.fabricCanvas.isDrawingMode = false;
+      window.fabricCanvas.selection = true;
+      
+      // 직사각형 객체 생성 (selectable, evented)
+      const rect = new fabric.Rect({
+        left: 50,
+        top: 50,
+        fill: 'rgba(255, 255, 0, 0.3)', // 연한 노란색, 투명도 0.3
+        width: 150,
+        height: 50,
+        selectable: true,
+        evented: true,
+        hasControls: true,
+        stroke: '#FFC107',
+        strokeWidth: 2,
+        lockMovementX: false,
+        lockMovementY: false
+      });
+      window.fabricCanvas.add(rect);
+      window.fabricCanvas.setActiveObject(rect);
+      window.fabricCanvas.renderAll();
+      console.log("서명 영역 추가됨:", rect);
+    });
+    
+    // "저장" 버튼: 현재 서명 영역 정보를 서버로 전송
+    document.getElementById("save-btn").addEventListener("click", function(){
+      const objects = window.fabricCanvas.getObjects();
+      const signatureAreas = objects.map(obj => ({
+        left: obj.left,
+        top: obj.top,
+        width: obj.width * obj.scaleX,
+        height: obj.height * obj.scaleY
+      }));
+      fetch('/save_signature_area', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ template: "관상동맥우회술 동의서", areas: signatureAreas })
+      })
+      .then(response => response.json())
+      .then(data => { alert(data.message); })
+      .catch(err => { 
+        console.error("저장 오류:", err);
+        alert("저장에 실패했습니다.");
+      });
+    });
+  </script>
+</body>
+</html>

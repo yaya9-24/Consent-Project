@@ -123,7 +123,7 @@
       </label>
       &nbsp;&nbsp;
       <label>형광펜 투명도: 
-        <input type="range" id="highlight-opacity" min="0" max="1" step="0.1" value="0.5">
+        <input type="range" id="highlight-opacity" min="0" max="1" step="0.1" value="0.2">
       </label>
     </div>
   </div>
@@ -237,7 +237,42 @@
                 }
               });
               fabricCanvas.on('path:created', function(event) {
-                console.log("path created:", event.path);
+                try {
+                  let path = event.path;
+                  if (path && path.stroke === "#FFFF99" && path.path && path.path.length > 0) {
+                    let baseY = path.path[0][2]; // 첫번째 점의 y값
+                    path.path.forEach(cmd => {
+                      switch (cmd[0]) {
+                        case "M":
+                        case "L":
+                          cmd[2] = baseY;
+                          break;
+                        case "Q":
+                          cmd[2] = baseY;
+                          cmd[4] = baseY;
+                          break;
+                        case "C":
+                          cmd[2] = baseY;
+                          cmd[4] = baseY;
+                          cmd[6] = baseY;
+                          break;
+                      }
+                    });
+                    path.set({ dirty: true });
+                    // blending mode를 screen으로 설정해 텍스트가 보이도록 함
+                    path.set({ globalCompositeOperation: "screen" });
+                    // 경로를 맨 뒤로 보내고 텍스트를 앞으로
+                    path.canvas.sendToBack(path);
+                    path.canvas.getObjects().forEach(obj => {
+                      if (obj.type === 'i-text') {
+                        path.canvas.bringToFront(obj);
+                      }
+                    });
+                    path.canvas.requestRenderAll();
+                  }
+                } catch (err) {
+                  console.error("형광펜 경로 조정 중 에러 발생:", err);
+                }
               });
               if (activeTool === "pen") {
                 fabricCanvas.isDrawingMode = true;
@@ -251,7 +286,7 @@
                 let highlightThickness = document.getElementById("highlight-thickness").value;
                 let highlightOpacity = document.getElementById("highlight-opacity").value;
                 fabricCanvas.freeDrawingBrush = new fabric.PencilBrush(fabricCanvas);
-                fabricCanvas.freeDrawingBrush.color = "orange";
+                fabricCanvas.freeDrawingBrush.color = "#FFFF99";
                 fabricCanvas.freeDrawingBrush.width = parseFloat(highlightThickness);
                 fabricCanvas.freeDrawingBrush.opacity = parseFloat(highlightOpacity);
               } else {
@@ -324,7 +359,7 @@
           fabricCanvas.freeDrawingBrush = new fabric.PencilBrush(fabricCanvas);
           let highlightThickness = document.getElementById("highlight-thickness").value;
           let highlightOpacity = document.getElementById("highlight-opacity").value;
-          fabricCanvas.freeDrawingBrush.color = "orange";
+          fabricCanvas.freeDrawingBrush.color = "#FFFF99";
           fabricCanvas.freeDrawingBrush.width = parseFloat(highlightThickness);
           fabricCanvas.freeDrawingBrush.opacity = parseFloat(highlightOpacity);
           fabricCanvas.isDrawingMode = true;
@@ -364,7 +399,7 @@
         if (activeTool === "highlight") {
           canvas.isDrawingMode = false;
           canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-          canvas.freeDrawingBrush.color = "orange";
+          canvas.freeDrawingBrush.color = "#FFFF99";
           canvas.freeDrawingBrush.width = thickness;
           canvas.freeDrawingBrush.opacity = parseFloat(document.getElementById("highlight-opacity").value);
           canvas.isDrawingMode = true;
@@ -379,7 +414,7 @@
         if (activeTool === "highlight") {
           canvas.isDrawingMode = false;
           canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-          canvas.freeDrawingBrush.color = "orange";
+          canvas.freeDrawingBrush.color = "#FFFF99";
           canvas.freeDrawingBrush.width = parseFloat(document.getElementById("highlight-thickness").value);
           canvas.freeDrawingBrush.opacity = opacityValue;
           canvas.isDrawingMode = true;
@@ -558,6 +593,9 @@
       if (selectedConsents.includes(consentId)) {
         if (confirm(consentId + " 동의서는 이미 추가되었습니다. 제거하시겠습니까?")) {
           removeConsent(consentId);
+          // 삭제 후 버튼 스타일을 초록색(활성)으로 변경
+          btn.style.backgroundColor = "#28a745";
+          btn.style.cursor = "pointer";
         }
         return;
       }

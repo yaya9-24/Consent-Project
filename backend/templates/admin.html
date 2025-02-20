@@ -33,7 +33,8 @@
       position: absolute; 
       top: 0; 
       left: 0; 
-      z-index: 10; 
+      z-index: 10000; 
+      pointer-events: auto;
     }
     #controls { margin-top: 10px; }
     #save-btn { 
@@ -60,89 +61,147 @@
   </div>
   
   <script>
+    console.log("스크립트 로드됨");
+
     // PDF.js 설정
     pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
+    console.log("PDF.js 워커 설정 완료");
     
-    const pdfUrl = '/static/pdfs/관상동맥우회술 동의서.pdf'; // PDF 템플릿 파일 경로
+    const pdfUrl = '/static/pdfs/관상동맥우회술 동의서.pdf';
     const pdfCanvas = document.getElementById("pdf-canvas");
     const fabricCanvasEl = document.getElementById("fabric-canvas");
     const pdfWrapper = document.getElementById("pdf-wrapper");
     
     // PDF 페이지 렌더링 (첫 페이지만 로드)
     pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
+      console.log("PDF 문서 로드됨, 총 페이지 수:", pdf.numPages);
       pdf.getPage(1).then(page => {
-        const scale = 1.5;
+        const scale = 1.34;
         const viewport = page.getViewport({ scale: scale });
+        console.log("페이지 1 viewport:", viewport);
         
-        // PDF 캔버스 해상도 및 CSS 크기 설정
+        // PDF 캔버스 크기 및 스타일 설정
         pdfCanvas.width = viewport.width;
         pdfCanvas.height = viewport.height;
         pdfCanvas.style.width = viewport.width + "px";
         pdfCanvas.style.height = viewport.height + "px";
+        console.log("PDF 캔버스 크기 설정:", viewport.width, viewport.height);
         
-        // Fabric 캔버스 해상도 및 CSS 크기 설정
+        // Fabric 캔버스 크기 및 스타일 설정
         fabricCanvasEl.width = viewport.width;
         fabricCanvasEl.height = viewport.height;
         fabricCanvasEl.style.width = viewport.width + "px";
         fabricCanvasEl.style.height = viewport.height + "px";
+        console.log("Fabric 캔버스 크기 설정:", viewport.width, viewport.height);
         
         // 부모 컨테이너 크기 설정
         pdfWrapper.style.width = viewport.width + "px";
         pdfWrapper.style.height = viewport.height + "px";
         
-        // PDF 렌더링
         const context = pdfCanvas.getContext("2d");
-        page.render({ canvasContext: context, viewport: viewport });
+        page.render({ canvasContext: context, viewport: viewport }).promise.then(() => {
+          console.log("PDF 페이지 렌더링 완료");
+        });
         
-        // Fabric 캔버스 생성 (선택 모드 활성화)
+        // Fabric 캔버스 생성
         window.fabricCanvas = new fabric.Canvas("fabric-canvas", { selection: true });
         window.fabricCanvas.isDrawingMode = false;
+        window.fabricCanvas.defaultCursor = "default";
+        window.fabricCanvas.hoverCursor = "move";
+        window.fabricCanvas.perPixelTargetFind = true;
+        window.fabricCanvas.targetFindTolerance = 5;
+        console.log("Fabric 캔버스 생성됨:", window.fabricCanvas);
+        
+        // Fabric 캔버스 이벤트 리스너 등록
+        window.fabricCanvas.on('mouse:down', function(e) {
+          console.log("Fabric mouse:down 이벤트 발생", e);
+        });
+        window.fabricCanvas.on('mouse:up', function(e) {
+          console.log("Fabric mouse:up 이벤트 발생", e);
+        });
+        window.fabricCanvas.on('object:selected', function(e) {
+          console.log("객체 선택됨:", e.target);
+        });
+        window.fabricCanvas.on('object:moving', function(e) {
+          console.log("객체 이동 중:", e.target);
+        });
+        window.fabricCanvas.on('selection:cleared', function(e) {
+          console.log("선택 해제됨");
+        });
       });
+    }).catch(err => {
+      console.error("PDF 로드 에러:", err);
     });
     
-    // "서명 영역 추가" 버튼: 드래그 가능한 직사각형 추가 (선택 모드 활성)
+    // "서명 영역 추가" 버튼 이벤트
     document.getElementById("add-sign-btn").addEventListener("click", function(){
-      // 드로잉 모드 해제 및 선택 모드 활성
+      console.log("서명 영역 추가 버튼 클릭됨");
+      // 드로잉 모드 해제, 선택 모드 활성화
       window.fabricCanvas.isDrawingMode = false;
       window.fabricCanvas.selection = true;
+      window.fabricCanvas.forEachObject(obj => {
+        obj.selectable = true;
+        console.log("객체 selectable 재설정:", obj);
+      });
       
-      // 직사각형 객체 생성 (selectable, evented)
+      // 직사각형 객체 생성
       const rect = new fabric.Rect({
         left: 50,
         top: 50,
-        fill: 'rgba(255, 255, 0, 0.3)', // 연한 노란색, 투명도 0.3
+        fill: 'rgba(255, 255, 0, 0.5)', // 테스트용 0.5, 나중에 원하는 값으로 조정
         width: 150,
         height: 50,
         selectable: true,
         evented: true,
+        perPixelTargetFind: true,
+        hasBorders: true,
         hasControls: true,
         stroke: '#FFC107',
         strokeWidth: 2,
         lockMovementX: false,
-        lockMovementY: false
+        lockMovementY: false,
+        objectCaching: false, // 캐싱 비활성화
+        hoverCursor: 'move',
+        moveCursor: 'move'
       });
+      
+      // 직사각형에 직접 mousedown 이벤트 등록 (디버깅용)
+      rect.on('mousedown', function(e) {
+        console.log("직사각형 mousedown 이벤트 발생", e);
+      });
+      
+      console.log("직사각형 객체 생성됨:", rect);
+      
+      // 객체 추가 후 활성 객체로 설정 및 좌표 업데이트
       window.fabricCanvas.add(rect);
       window.fabricCanvas.setActiveObject(rect);
-      window.fabricCanvas.renderAll();
-      console.log("서명 영역 추가됨:", rect);
+      rect.setCoords();
+      console.log("현재 활성 객체:", window.fabricCanvas.getActiveObject());
+      window.fabricCanvas.requestRenderAll();
+      console.log("객체 추가 후 캔버스 렌더링 완료");
     });
     
-    // "저장" 버튼: 현재 서명 영역 정보를 서버로 전송
+    // "저장" 버튼 이벤트
     document.getElementById("save-btn").addEventListener("click", function(){
       const objects = window.fabricCanvas.getObjects();
+      console.log("저장 버튼 클릭됨, 캔버스 객체들:", objects);
       const signatureAreas = objects.map(obj => ({
         left: obj.left,
         top: obj.top,
         width: obj.width * obj.scaleX,
         height: obj.height * obj.scaleY
       }));
+      console.log("서명 영역 데이터:", signatureAreas);
       fetch('/save_signature_area', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ template: "관상동맥우회술 동의서", areas: signatureAreas })
       })
       .then(response => response.json())
-      .then(data => { alert(data.message); })
+      .then(data => {
+        console.log("서버 응답:", data);
+        alert(data.message);
+      })
       .catch(err => { 
         console.error("저장 오류:", err);
         alert("저장에 실패했습니다.");

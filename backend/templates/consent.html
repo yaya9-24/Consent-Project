@@ -127,6 +127,16 @@
       </label>
     </div>
   </div>
+
+  <!-- 서명 모달 추가 -->
+<div id="signature-modal" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border: 2px solid #000; z-index: 2000;">
+  <h3>서명 입력</h3>
+  <canvas id="signature-canvas" width="300" height="150" style="border: 1px solid black;"></canvas>
+  <br>
+  <button onclick="clearSignature()">지우기</button>
+  <button onclick="saveSignature()">저장</button>
+  <button onclick="closeModal()">취소</button>
+</div>
   
   <!-- 메인 컨텐츠 영역 -->
   <div class="container">
@@ -176,6 +186,32 @@
     let fabricCanvases = [];
     // consentPages: PDF 페이지 DOM들을 저장 (중복 선언 없이 한 번만 선언)
     let consentPages = {};
+
+    // 서명 데이터를 서버에서 불러오기
+    function loadSignatureAreas(fabricCanvas, consent) {
+        fetch(`/get_signature_areas/${consent}_signature_areas.json`)
+            .then(response => response.json())
+            .then(data => {
+                data.forEach(area => {
+                    let rect = new fabric.Rect({
+                        left: area.left,
+                        top: area.top,
+                        width: area.width,
+                        height: area.height,
+                        fill: 'rgba(255, 255, 0, 0.3)',
+                        selectable: true
+                    });
+
+                    fabricCanvas.add(rect);
+
+                    rect.on('mousedown', function () {
+                        selectedSignatureArea = rect;
+                        openModal();
+                    });
+                });
+            })
+            .catch(error => console.error("서명 영역 로드 실패:", error));
+    }
 
     // PDF 및 Fabric 캔버스 로드 함수 (페이지 순서 정렬 포함)
     function loadPdf(consent) {
@@ -239,7 +275,7 @@
               fabricCanvas.on('path:created', function(event) {
                 try {
                   let path = event.path;
-                  if (path && path.stroke === "#FFFF99" && path.path && path.path.length > 0) {
+                  if (path && path.stroke === "yellow" && path.path && path.path.length > 0) {
                     let baseY = path.path[0][2]; // 첫번째 점의 y값
                     path.path.forEach(cmd => {
                       switch (cmd[0]) {
@@ -286,7 +322,7 @@
                 let highlightThickness = document.getElementById("highlight-thickness").value;
                 let highlightOpacity = document.getElementById("highlight-opacity").value;
                 fabricCanvas.freeDrawingBrush = new fabric.PencilBrush(fabricCanvas);
-                fabricCanvas.freeDrawingBrush.color = "#FFFF99";
+                fabricCanvas.freeDrawingBrush.color = "yellow";
                 fabricCanvas.freeDrawingBrush.width = parseFloat(highlightThickness);
                 fabricCanvas.freeDrawingBrush.opacity = parseFloat(highlightOpacity);
               } else {
@@ -307,7 +343,13 @@
           });
           // consentPages에 저장 (나중에 제거 시 사용)
           consentPages[consent] = wrappers;
+
+          // ✅ PDF 로드 완료 후 서명 칸 추가
+        if (consent === "관상동맥우회술 동의서") {
+                loadSignatureAreas(fabricCanvas, consent);
+            }
         });
+        
       }).catch(error => {
         console.error("PDF 로드 에러:", error);
       });
@@ -359,7 +401,7 @@
           fabricCanvas.freeDrawingBrush = new fabric.PencilBrush(fabricCanvas);
           let highlightThickness = document.getElementById("highlight-thickness").value;
           let highlightOpacity = document.getElementById("highlight-opacity").value;
-          fabricCanvas.freeDrawingBrush.color = "#FFFF99";
+          fabricCanvas.freeDrawingBrush.color = "yellow";
           fabricCanvas.freeDrawingBrush.width = parseFloat(highlightThickness);
           fabricCanvas.freeDrawingBrush.opacity = parseFloat(highlightOpacity);
           fabricCanvas.isDrawingMode = true;
@@ -399,7 +441,7 @@
         if (activeTool === "highlight") {
           canvas.isDrawingMode = false;
           canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-          canvas.freeDrawingBrush.color = "#FFFF99";
+          canvas.freeDrawingBrush.color = "yellow";
           canvas.freeDrawingBrush.width = thickness;
           canvas.freeDrawingBrush.opacity = parseFloat(document.getElementById("highlight-opacity").value);
           canvas.isDrawingMode = true;
@@ -414,7 +456,7 @@
         if (activeTool === "highlight") {
           canvas.isDrawingMode = false;
           canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
-          canvas.freeDrawingBrush.color = "#FFFF99";
+          canvas.freeDrawingBrush.color = "yellow";
           canvas.freeDrawingBrush.width = parseFloat(document.getElementById("highlight-thickness").value);
           canvas.freeDrawingBrush.opacity = opacityValue;
           canvas.isDrawingMode = true;
@@ -627,6 +669,53 @@
         canvas.calcOffset();
       });
     });
+
+    let selectedSignatureArea = null;
+let signatureCanvas = new fabric.Canvas('signature-canvas');
+signatureCanvas.isDrawingMode = true;
+signatureCanvas.freeDrawingBrush.width = 3;
+signatureCanvas.freeDrawingBrush.color = "black";
+
+// 서명 칸을 저장했던 위치를 불러오기
+let encodedFilename = encodeURIComponent("관상동맥우회술 동의서_signature_areas.json");
+
+function openModal() {
+  document.getElementById('signature-modal').style.display = 'block';
+}
+
+function closeModal() {
+  document.getElementById('signature-modal').style.display = 'none';
+  signatureCanvas.clear();
+}
+
+function clearSignature() {
+  signatureCanvas.clear();
+}
+
+function saveSignature() {
+      if (!selectedSignatureArea) return;
+
+      let signatureData = signatureCanvas.toDataURL();
+      
+      fetch('/upload_signature', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          consent_id: '관상동맥우회술 동의서',
+          signature: signatureData,
+          area: {
+            left: selectedSignatureArea.left,
+            top: selectedSignatureArea.top,
+            width: selectedSignatureArea.width,
+            height: selectedSignatureArea.height
+          }
+        })
+      }).then(response => response.json())
+        .then(data => {
+          alert("서명이 추가되었습니다!");
+          closeModal();
+        });
+    }
 
     window.onload = function() {
       // 초기 동의서 로드 (예: 기본 동의서)

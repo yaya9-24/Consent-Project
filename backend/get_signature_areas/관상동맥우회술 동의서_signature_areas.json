@@ -1,8 +1,16 @@
 [
   {
-    "left": 50,
-    "top": 50,
-    "width": 150,
+    "page": 3,
+    "left": 150,
+    "top": 400,
+    "width": 200,
+    "height": 50
+  },
+  {
+    "page": 5,
+    "left": 100,
+    "top": 350,
+    "width": 180,
     "height": 50
   }
 ]

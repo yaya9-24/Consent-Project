@@ -5,6 +5,7 @@ import base64
 import io
 import json
 from PIL import Image 
+from urllib.parse import unquote
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 
@@ -22,10 +23,16 @@ def consent():
 def serve_pdf(filename):
     return send_from_directory('static/pdfs', filename)
 
+SIGNATURE_DIR = os.path.join(app.root_path,'get_signature_areas')
+
+
 # JSON 파일 제공 엔드포인트
-@app.route('/get_signature_areas/<filename>')
+@app.route('/backend/get_signature_areas/<filename>')
 def get_signature_areas(filename):
-    return send_from_directory('backend/get_signature_areas', filename)  # backend 폴더에서 JSON 제공
+    decoded_filename = unquote(filename)
+    print("Decoded filename:", decoded_filename)  # 콘솔에 출력
+    print("SIGNATURE_DIR:", SIGNATURE_DIR)
+    return send_from_directory(SIGNATURE_DIR, decoded_filename)  # backend 폴더에서 JSON 제공
 
 # 관리자 페이지 제공
 @app.route('/admin')

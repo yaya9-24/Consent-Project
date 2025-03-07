@@ -26,13 +26,16 @@ def serve_pdf(filename):
 SIGNATURE_DIR = os.path.join(app.root_path,'get_signature_areas')
 
 
-# JSON 파일 제공 엔드포인트
-@app.route('/backend/get_signature_areas/<filename>')
+@app.route('/backend/get_signature_areas/<path:filename>')
 def get_signature_areas(filename):
     decoded_filename = unquote(filename)
-    print("Decoded filename:", decoded_filename)  # 콘솔에 출력
-    print("SIGNATURE_DIR:", SIGNATURE_DIR)
-    return send_from_directory(SIGNATURE_DIR, decoded_filename)  # backend 폴더에서 JSON 제공
+    file_path = os.path.join(SIGNATURE_DIR, decoded_filename)
+
+    if os.path.exists(file_path):
+        return send_from_directory(SIGNATURE_DIR, decoded_filename)
+    else:
+        print(f"🚨 파일을 찾을 수 없음: {file_path}")
+        return jsonify({"error": "파일을 찾을 수 없습니다."}), 404
 
 # 관리자 페이지 제공
 @app.route('/admin')
@@ -65,9 +68,10 @@ def upload_signature():
     signature_resized = signature_image.resize((int(area["width"]), int(area["height"])))
 
     # PDF에 서명 삽입
-    pdf_path = "static/pdfs/consent_form.pdf"
+    pdf_path = "static/pdfs/basic_consent.pdf"
     doc = fitz.open(pdf_path)
-    page = doc[0]  # 첫 번째 페이지
+    page_number = area.get("page", 1)  # page 정보가 없으면 1페이지 사용
+    page = doc[page_number - 1]
     img_rect = fitz.Rect(area["left"], area["top"], area["left"] + area["width"], area["top"] + area["height"])
     
     img_stream = io.BytesIO()
@@ -78,5 +82,7 @@ def upload_signature():
     doc.save("static/pdfs/signed_consent_form.pdf")
 
     return jsonify({"message": "서명 추가 완료!"})
+
+
 if __name__ == '__main__':
     app.run(debug=True)

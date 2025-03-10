@@ -59,7 +59,15 @@ def upload_signature():
     data = request.json
     signature_b64 = data['signature']
     area = data['area']
-    
+    consent_id = data.get("consent_id", "basic_consent")  # ✅ 동의서 ID 가져오기 (기본값: basic_consent)
+
+    # ✅ 동의서별 PDF 파일 경로 설정
+    pdf_path = f"static/pdfs/{consent_id}.pdf"
+    signed_pdf_path = f"static/pdfs/{consent_id}_signed.pdf"
+
+    if not os.path.exists(pdf_path):
+        return jsonify({"error": f"PDF 파일이 존재하지 않습니다: {pdf_path}"}), 404
+
     # 서명 데이터 디코딩
     signature_data = base64.b64decode(signature_b64.split(',')[1])
     signature_image = Image.open(io.BytesIO(signature_data))
@@ -68,20 +76,21 @@ def upload_signature():
     signature_resized = signature_image.resize((int(area["width"]), int(area["height"])))
 
     # PDF에 서명 삽입
-    pdf_path = "static/pdfs/basic_consent.pdf"
     doc = fitz.open(pdf_path)
     page_number = area.get("page", 1)  # page 정보가 없으면 1페이지 사용
     page = doc[page_number - 1]
     img_rect = fitz.Rect(area["left"], area["top"], area["left"] + area["width"], area["top"] + area["height"])
-    
+
     img_stream = io.BytesIO()
     signature_resized.save(img_stream, format="PNG")
     img_stream.seek(0)
 
     page.insert_image(img_rect, stream=img_stream, keep_proportion=True)
-    doc.save("static/pdfs/signed_consent_form.pdf")
 
-    return jsonify({"message": "서명 추가 완료!"})
+    # ✅ 서명된 PDF를 동의서별로 저장
+    doc.save(signed_pdf_path)
+
+    return jsonify({"message": "서명 추가 완료!", "signed_pdf": signed_pdf_path})
 
 
 if __name__ == '__main__':

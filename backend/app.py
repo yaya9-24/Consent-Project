@@ -98,64 +98,70 @@ def finalize_signatures():
 
     merged_pdf = fitz.open()
 
-    # 각 동의서별 처리
     for consent in selected_consents:
         pdf_path = f"static/pdfs/{consent}.pdf"
         if not os.path.exists(pdf_path):
             return jsonify({"error": f"PDF 파일이 존재하지 않습니다: {pdf_path}"}), 404
 
         doc = fitz.open(pdf_path)
-        # 각 서명 영역에 대해 처리
-        for sig in signatures:
-            if sig["consentId"] == consent:
-                page_num = sig.get("page", 1)
-                try:
-                    page = doc[page_num - 1]
-                except IndexError:
-                    continue  # 해당 페이지가 없으면 건너뜁니다.
-                # 클라이언트에서 전달한 좌표 값들
-                left = sig["left"]
-                top = sig["top"]
-                width = sig["width"]
-                height = sig["height"]
+        consent_signatures = [sig for sig in signatures if sig["consentId"] == consent]
+        
+        for area in consent_signatures:
+            page_num = area["page"] - 1
+            if page_num >= doc.page_count:
+                print(f"⚠️ 페이지 번호 {page_num + 1}이 PDF 총 페이지 수({doc.page_count})를 초과합니다.")
+                continue
+                
+            page = doc[page_num]
+            pdf_width = page.rect.width
+            pdf_height = page.rect.height
 
-                # PDF 페이지의 실제 높이
-                pdf_height = page.rect.height
+            # 클라이언트에서 받은 원본 좌표 (Fabric 캔버스 기준)
+            canvas_left = area["left"]
+            canvas_top = area["top"]
+            canvas_width = area["width"]
+            canvas_height = area["height"]
+            canvas_scale_x = area.get("scaleFactor", 1.0)  # x축 스케일 (클라이언트 제공)
+            canvas_render_height = area.get("pdfHeight", pdf_height)  # 클라이언트에서 받은 렌더링 높이
 
-                # 클라이언트 캔버스 높이는 각 페이지마다 다를 수 있으므로, sig에서 전달한 값을 사용 (없으면 기본 1126)
-                client_canvas_height = sig.get("canvasHeight", 1126.0)
+            # 스케일링 비율 계산
+            scale_x = pdf_width / (800 * canvas_scale_x)  # 800은 기본 캔버스 너비
+            scale_y = pdf_height / canvas_render_height  # PDF 높이 / 클라이언트 렌더링 높이
 
-                # 스케일 계수 계산: PDF의 실제 높이에 대한 클라이언트 캔버스 높이 비율
-                scale_factor = pdf_height / client_canvas_height
-                left_scaled = left * scale_factor
-                top_scaled = top * scale_factor
-                width_scaled = width * scale_factor
-                height_scaled = height * scale_factor
+            # PDF 좌표계로 변환
+            left_scaled = canvas_left * scale_x
+            width_scaled = canvas_width * scale_x * 0.7  # 기존 방식 유지
+            # y축 변환: Fabric 캔버스의 top을 PDF 좌표계의 상단 기준으로 매핑
+            top_scaled = (canvas_top / canvas_render_height) * pdf_height - 2  # 기존 조정값 유지
+            height_scaled = canvas_height * scale_y
 
-                # PDF 좌표는 하단 기준이므로 top 변환
-                new_top = pdf_height - top_scaled - height_scaled
+            # 최종 사각형 좌표
+            rect = fitz.Rect(left_scaled, top_scaled, left_scaled + width_scaled, top_scaled + height_scaled)
+            print(f"[DEBUG] 원본 좌표: left={canvas_left}, top={canvas_top}, width={canvas_width}, height={canvas_height}")
+            print(f"[DEBUG] 스케일링: scale_x={scale_x}, scale_y={scale_y}, pdf_height={pdf_height}, canvas_render_height={canvas_render_height}")
+            print(f"[DEBUG] PDF 좌표: left={left_scaled}, top={top_scaled}, width={width_scaled}, height={height_scaled}, rect={rect}")
 
-                # 디버깅 로그
-                print(f"[DEBUG] Consent: {consent}, Page: {page_num}")
-                print(f"[DEBUG] PDF 페이지 높이: {pdf_height}")
-                print(f"[DEBUG] 원본 좌표: left={left}, top={top}, width={width}, height={height}")
-                print(f"[DEBUG] 스케일 적용 후: left={left_scaled}, top={top_scaled}, width={width_scaled}, height={height_scaled}")
-                print(f"[DEBUG] 변환된 top: {new_top}")
-                rect = fitz.Rect(left_scaled, new_top, left_scaled + width_scaled, new_top + height_scaled)
-                print(f"[DEBUG] 삽입될 Rect: {rect}")
+            # 서명 데이터 디코딩 및 삽입
+            sig_img_data = base64.b64decode(signature_data.split(',')[1])
+            signature_image = Image.open(io.BytesIO(sig_img_data))
 
-                try:
-                    # 서명 데이터 디코딩
-                    sig_img_data = base64.b64decode(signature_data.split(',')[1])
-                    # 이미지 생성 및 크기 조정
-                    signature_image = Image.open(io.BytesIO(sig_img_data))
-                    signature_resized = signature_image.resize((int(width_scaled), int(height_scaled)))
-                    img_stream = io.BytesIO()
-                    signature_resized.save(img_stream, format="PNG")
-                    img_stream.seek(0)
-                    page.insert_image(rect, stream=img_stream, keep_proportion=True, overlay=True)
-                except Exception as e:
-                    print(f"서명 삽입 중 오류 발생: {e}")
+            # 리사이징 품질 개선: 중간 해상도에서 리사이징
+            high_res_width = int(width_scaled * 2)  # 2배 크기로 임시 확대
+            high_res_height = int(height_scaled * 2)
+            signature_high_res = signature_image.resize((high_res_width, high_res_height), Image.LANCZOS)
+
+            # 최종 크기로 리사이징
+            signature_resized = signature_high_res.resize((int(width_scaled), int(height_scaled)), Image.LANCZOS)
+
+            # PNG 저장 시 압축 최소화
+            img_stream = io.BytesIO()
+            signature_resized.save(img_stream, format="PNG", optimize=False, compress_level=0)  # 압축 비활성화
+            img_stream.seek(0)
+
+            # DPI 대신 크기 보정으로 품질 개선
+            page.insert_image(rect, stream=img_stream, keep_proportion=True)
+            print(f"✅ 서명 이미지 삽입 완료: 동의서 {consent}, 페이지 {page_num + 1}")
+
         merged_pdf.insert_pdf(doc)
 
     merged_pdf.save(FINAL_PDF_PATH)

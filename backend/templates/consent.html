@@ -253,97 +253,96 @@
     // PDF 및 Fabric 캔버스 로드 함수 (여러 페이지 지원)
     let consentOrderCounter = 0;
     function loadPdf(consent) {
-      consentOrderCounter++;
-      let currentConsentOrder = consentOrderCounter;
-      
-      let loadingTask = pdfjsLib.getDocument(`/static/pdfs/${consent}.pdf`);
-      loadingTask.promise.then(pdf => {
+    consentOrderCounter++;
+    let currentConsentOrder = consentOrderCounter;
+    
+    let loadingTask = pdfjsLib.getDocument(`/static/pdfs/${consent}.pdf`);
+    loadingTask.promise.then(pdf => {
         console.log(`📄 PDF 문서 로드됨: ${consent}, 총 페이지 수: ${pdf.numPages}`);
         let pagePromises = [];
         let newConsentPages = [];
         
         for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-          pagePromises.push(
-            pdf.getPage(pageNum).then(page => {
-              let viewport = page.getViewport({ scale: 1.34 });
-              let canvasWrapper = document.createElement("div");
-              canvasWrapper.className = "canvas-wrapper";
-              canvasWrapper.dataset.pageNumber = pageNum;
-              canvasWrapper.dataset.consentId = consent;
-              canvasWrapper.dataset.pageCount = pdf.numPages;
-              canvasWrapper.dataset.consentOrder = currentConsentOrder;
-              canvasWrapper.style.width = viewport.width + "px";
-              canvasWrapper.style.height = viewport.height + "px";
-              
-              let pdfCanvas = document.createElement("canvas");
-              pdfCanvas.width = viewport.width;
-              pdfCanvas.height = viewport.height;
-              pdfCanvas.style.position = "absolute";
-              pdfCanvas.style.top = "0";
-              pdfCanvas.style.left = "0";
-              pdfCanvas.style.pointerEvents = "none";
-              
-              // 여기에 캔버스 높이 저장 (PDF 캔버스 높이)
-              canvasWrapper.dataset.canvasHeight = pdfCanvas.height;
-              console.log("PDF Canvas Height:", pdfCanvas.height);
-              
-              let overlayCanvas = document.createElement("canvas");
-              overlayCanvas.width = viewport.width;
-              overlayCanvas.height = viewport.height;
-              overlayCanvas.style.position = "absolute";
-              overlayCanvas.style.top = "0";
-              overlayCanvas.style.left = "0";
-              overlayCanvas.style.pointerEvents = "auto";
-              overlayCanvas.style.zIndex = "100";
-              overlayCanvas.style.touchAction = "none";
-              
-              let context = pdfCanvas.getContext("2d");
-              page.render({ canvasContext: context, viewport: viewport });
-              
-              canvasWrapper.appendChild(pdfCanvas);
-              canvasWrapper.appendChild(overlayCanvas);
-              newConsentPages.push(canvasWrapper);
-              
-              let fabricCanvas = new fabric.Canvas(overlayCanvas, { selection: true });
-              fabricCanvas.isDrawingMode = false;
-              fabricCanvas.defaultCursor = "default";
-              fabricCanvas.hoverCursor = "move";
-              fabricCanvas.perPixelTargetFind = true;
-              fabricCanvas.targetFindTolerance = 5;
-              fabricCanvas.calcOffset();
-              
-              canvasWrapper.fabricCanvas = fabricCanvas;
-              
-              return { pageNum: pageNum, wrapper: canvasWrapper };
-            })
-          );
+            pagePromises.push(
+                pdf.getPage(pageNum).then(page => {
+                    let viewport = page.getViewport({ scale: 1.34 });
+                    let canvasWrapper = document.createElement("div");
+                    canvasWrapper.className = "canvas-wrapper";
+                    canvasWrapper.dataset.pageNumber = pageNum;
+                    canvasWrapper.dataset.consentId = consent;
+                    canvasWrapper.dataset.pageCount = pdf.numPages;
+                    canvasWrapper.dataset.consentOrder = currentConsentOrder;
+                    canvasWrapper.style.width = viewport.width + "px";
+                    canvasWrapper.style.height = viewport.height + "px";
+                    
+                    let pdfCanvas = document.createElement("canvas");
+                    pdfCanvas.width = viewport.width;
+                    pdfCanvas.height = viewport.height;
+                    pdfCanvas.style.position = "absolute";
+                    pdfCanvas.style.top = "0";
+                    pdfCanvas.style.left = "0";
+                    pdfCanvas.style.pointerEvents = "none";
+                    
+                    // canvasHeight를 viewport.height로 설정 (실제 렌더링 높이)
+                    canvasWrapper.dataset.canvasHeight = viewport.height;
+                    console.log(`PDF Canvas Height for page ${pageNum}: ${viewport.height}`);
+                    
+                    let overlayCanvas = document.createElement("canvas");
+                    overlayCanvas.width = viewport.width;
+                    overlayCanvas.height = viewport.height;
+                    overlayCanvas.style.position = "absolute";
+                    overlayCanvas.style.top = "0";
+                    overlayCanvas.style.left = "0";
+                    overlayCanvas.style.pointerEvents = "auto";
+                    overlayCanvas.style.zIndex = "100";
+                    overlayCanvas.style.touchAction = "none";
+                    
+                    let context = pdfCanvas.getContext("2d");
+                    page.render({ canvasContext: context, viewport: viewport });
+                    
+                    canvasWrapper.appendChild(pdfCanvas);
+                    canvasWrapper.appendChild(overlayCanvas);
+                    newConsentPages.push(canvasWrapper);
+                    
+                    let fabricCanvas = new fabric.Canvas(overlayCanvas, { selection: true });
+                    fabricCanvas.isDrawingMode = false;
+                    fabricCanvas.defaultCursor = "default";
+                    fabricCanvas.hoverCursor = "move";
+                    fabricCanvas.perPixelTargetFind = true;
+                    fabricCanvas.targetFindTolerance = 5;
+                    fabricCanvas.calcOffset();
+                    canvasWrapper.fabricCanvas = fabricCanvas;
+                    
+                    return { pageNum: pageNum, wrapper: canvasWrapper };
+                })
+            );
         }
         
         Promise.all(pagePromises).then(() => {
-          let allPages = [...pdfContainer.children, ...newConsentPages];
-          allPages.sort((a, b) => {
-            let orderA = parseInt(a.dataset.consentOrder, 10) || 0;
-            let orderB = parseInt(b.dataset.consentOrder, 10) || 0;
-            if (orderA !== orderB) return orderA - orderB;
-            return parseInt(a.dataset.pageNumber, 10) - parseInt(b.dataset.pageNumber, 10);
-          });
-          
-          pdfContainer.innerHTML = "";
-          allPages.forEach(page => pdfContainer.appendChild(page));
-          
-          consentPages[consent] = newConsentPages;
-          newConsentPages.forEach(page => {
-            if (page.fabricCanvas) {
-              fabricCanvases.push(page.fabricCanvas);
-            }
-          });
-          console.log(`✅ 동의서 ${consent} 페이지 로드 완료:`, newConsentPages);
-          loadSignatureAreas(consent);
+            let allPages = [...pdfContainer.children, ...newConsentPages];
+            allPages.sort((a, b) => {
+                let orderA = parseInt(a.dataset.consentOrder, 10) || 0;
+                let orderB = parseInt(b.dataset.consentOrder, 10) || 0;
+                if (orderA !== orderB) return orderA - orderB;
+                return parseInt(a.dataset.pageNumber, 10) - parseInt(b.dataset.pageNumber, 10);
+            });
+            
+            pdfContainer.innerHTML = "";
+            allPages.forEach(page => pdfContainer.appendChild(page));
+            
+            consentPages[consent] = newConsentPages;
+            newConsentPages.forEach(page => {
+                if (page.fabricCanvas) {
+                    fabricCanvases.push(page.fabricCanvas);
+                }
+            });
+            console.log(`✅ 동의서 ${consent} 페이지 로드 완료:`, newConsentPages);
+            loadSignatureAreas(consent);
         });
-      }).catch(error => {
+    }).catch(error => {
         console.error("🚨 PDF 로드 에러:", error);
-      });
-    }
+    });
+}
 
     // 도구 전환 함수
     function setTool(tool) {
@@ -689,36 +688,42 @@
     let savedSignatureData = null;
 
     function saveSignature() {
-      let signatureData = signatureCanvas.toDataURL();
-      console.log("Signature Data URL:", signatureData);
-      if (!signatureData) {
+    let signatureData = signatureCanvas.toDataURL();
+    console.log("Signature Data URL:", signatureData);
+    if (!signatureData) {
         alert("서명을 입력하세요!");
         return;
-      }
-      savedSignatureData = signatureData;
-      selectedSignatureAreaList.forEach(area => {
+    }
+    savedSignatureData = signatureData;
+    selectedSignatureAreaList.forEach(area => {
         let consentId = area.consentId;
         let pageWrapper = document.querySelector(`[data-consent-id="${consentId}"][data-page-number="${area.page}"]`);
         if (!pageWrapper) {
-          console.error(`🚨 해당 동의서(${consentId})의 페이지(${area.page})를 찾을 수 없음`);
-          return;
+            console.error(`🚨 해당 동의서(${consentId})의 페이지(${area.page})를 찾을 수 없음`);
+            return;
         }
         let canvas = pageWrapper.fabricCanvas;
         if (!canvas) {
-          console.error(`🚨 페이지 ${area.page}의 Fabric 캔버스가 없음`);
-          return;
+            console.error(`🚨 페이지 ${area.page}의 Fabric 캔버스가 없음`);
+            return;
         }
         fabric.Image.fromURL(signatureData, function(img) {
-          img.scaleToWidth(area.width);
-          img.scaleToHeight(area.height);
-          img.set({ left: area.left, top: area.top, selectable: false });
-          canvas.add(img);
-          canvas.renderAll();
+            img.scaleToWidth(area.width);
+            img.scaleToHeight(area.height);
+            img.set({ left: area.left, top: area.top, selectable: false });
+            canvas.add(img);
+            canvas.renderAll();
         });
-      });
-      alert("모든 서명 영역에 서명이 적용되었습니다!");
-      closeModal();
-    }
+
+        // 스케일링 비율과 PDF 높이 정보를 추가
+        let scaleFactor = canvas.width / 800; // 기본 캔버스 너비 기준
+        area.scaleFactor = scaleFactor;
+        area.pdfHeight = parseFloat(pageWrapper.dataset.canvasHeight);
+        console.log(`Signature Area with Scale:`, area);
+    });
+    alert("모든 서명 영역에 서명이 적용되었습니다!");
+    closeModal();
+}
 
     function finalizeSignatures() {
       let signatureData = savedSignatureData;

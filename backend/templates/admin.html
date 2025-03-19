@@ -3,205 +3,603 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>관리자 페이지 - 서명 영역 지정</title>
-  <!-- PDF.js 및 Fabric.js 라이브러리 -->
+  <title>전자 동의서 - 서명 위치 지정</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.2.4/fabric.min.js"></script>
   <style>
-    body { 
-      font-family: Arial, sans-serif; 
-      text-align: center; 
-      margin: 20px; 
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 40px;
     }
-    /* PDF와 Fabric 캔버스가 들어갈 컨테이너 */
-    #pdf-wrapper { 
-      position: relative; 
-      display: inline-block; 
-      border: 1px solid #ddd; 
+    .container {
+      max-width: 800px;
+      margin: auto;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      background-color: #f9f9f9;
+      position: relative;
     }
-    /* PDF 캔버스: 가장 아래, 이벤트 차단 */
-    #pdf-canvas { 
-      position: absolute; 
-      top: 0; 
-      left: 0; 
-      z-index: 0; 
-      pointer-events: none; 
+    .pdf-container {
+      margin-top: 20px;
+      padding: 0;
+      position: relative;
     }
-    /* Fabric 캔버스: PDF 위에 표시, 상호작용 가능 */
-    #fabric-canvas { 
-      position: absolute; 
-      top: 0; 
-      left: 0; 
-      z-index: 10; 
-      /* 아주 미세한 배경색을 주어 클릭 이벤트가 확실히 잡히도록 함 */
-      background-color: rgba(0, 0, 0, 0.001);
+    .canvas-wrapper {
+      position: relative;
+      margin-bottom: 20px;
     }
-    #controls { margin-top: 10px; }
-    #save-btn { 
-      padding: 8px 12px; 
-      background: #28a745; 
-      color: white; 
-      border: none; 
-      border-radius: 5px; 
-      cursor: pointer; 
+    canvas {
+      border: 1px solid black;
+    }
+    #consent-sidebar {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: row;
+      gap: 10px;
+      background-color: rgba(255, 255, 255, 0.95);
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      z-index: 2000;
+    }
+    .layer {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    #layer2, #layer3 {
+      display: none;
+    }
+    #consent-sidebar button {
+      padding: 8px;
+      border: none;
+      cursor: pointer;
+      background-color: #28a745;
+      color: white;
+      border-radius: 5px;
+    }
+    #signatureList {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 20px;
+    }
+    #signatureList th, #signatureList td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    #signatureList th {
+      background-color: #f2f2f2;
+    }
+    #downloadBtn {
+      margin-top: 20px;
+      padding: 10px 20px;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #downloadBtn:hover {
+      background-color: #0056b3;
     }
   </style>
 </head>
 <body>
-  <h1>관리자 페이지 - 서명 영역 지정</h1>
-  <p>PDF 템플릿 파일을 선택하세요.</p>
-  <!-- 파일 선택 input -->
-  <input type="file" id="file-input" accept="application/pdf">
-  <!-- PDF 및 캔버스 래퍼 -->
-  <div id="pdf-wrapper">
-    <canvas id="pdf-canvas"></canvas>
-    <canvas id="fabric-canvas"></canvas>
+  <div class="container">
+    <h1>전자 동의서 - 서명 위치 지정</h1>
+    <p>아래에서 동의서를 선택하고 서명 위치를 지정하세요.</p>
+    <div id="pdf-container" class="pdf-container"></div>
+    <br>
+    <button onclick="toggleAddMode()">서명 위치 추가 모드</button>
+    <button onclick="saveToServer()">서버에 저장</button>
   </div>
-  <div id="controls">
-    <button id="add-sign-btn">서명 영역 추가</button>
-    <button id="save-btn">저장</button>
+
+  <div id="consent-sidebar">
+    <div id="layer1" class="layer">
+      <button onclick="selectLayer1('surgery')">수술</button>
+      <button onclick="selectLayer1('procedure')">시술</button>
+      <button onclick="selectLayer1('underlying')">기저질환</button>
+    </div>
+    <div id="layer2" class="layer"></div>
+    <div id="layer3" class="layer"></div>
   </div>
-  
+
+  <button id="downloadBtn" onclick="downloadJSON()">JSON 파일 다운로드</button>
+
+  <h2>서명 위치 목록</h2>
+  <table id="signatureList">
+    <thead>
+      <tr>
+        <th>동의서 ID</th>
+        <th>페이지</th>
+        <th>Left</th>
+        <th>Top</th>
+        <th>너비</th>
+        <th>높이</th>
+        <th>작업</th>
+      </tr>
+    </thead>
+    <tbody id="signatureListBody"></tbody>
+  </table>
+
   <script>
+    console.log("스크립트 로드됨");
+
     // PDF.js 설정
+    var pdfjsLib = window['pdfjs-dist/build/pdf'];
     pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
 
-    const pdfCanvas = document.getElementById("pdf-canvas");
-    const fabricCanvasEl = document.getElementById("fabric-canvas");
-    const pdfWrapper = document.getElementById("pdf-wrapper");
-    const fileInput = document.getElementById("file-input");
+    let selectedConsents = [];
+    let pdfContainer = document.getElementById("pdf-container");
+    let fabricCanvases = [];
+    let consentPages = {};
+    let signatures = [];
+    let addMode = false;
 
-    let pdfDoc = null;
-    let scale = 1.34;  // PDF 스케일
-    let fabricCanvas; // Fabric 캔버스 전역 변수
-    let pdfFileName = ""; // 선택한 PDF 파일 이름 저장 (확장자 제외)
+    function loadSignatureAreas(consent) {
+      const encodedConsent = encodeURIComponent(consent);
+      const url = `/backend/get_signature_areas/${encodedConsent}_signature_areas.json`;
+      console.log("🔄 서명 영역 로드 URL:", url);
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          console.log("✅ 불러온 서명 영역 데이터:", data);
+          signatures = data; // 기존 서명 영역 로드
+          renderSignatures(); // 데이터 로드 후 즉시 렌더링
+          updateTable();
+        })
+        .catch(error => console.error("🚨 서명 영역 로드 실패:", error));
+    }
 
-    // 파일 선택 시 PDF 파일 로드
-    fileInput.addEventListener("change", function(event) {
-      const file = event.target.files[0];
-      if (file) {
-        // 파일 이름에서 .pdf 확장자 제거 (대소문자 구분 없이)
-        pdfFileName = file.name.replace(/\.pdf$/i, '');
-        const fileReader = new FileReader();
-        fileReader.onload = function() {
-          const typedArray = new Uint8Array(this.result);
-          pdfjsLib.getDocument(typedArray).promise.then(pdf => {
-            pdfDoc = pdf;
-            // 첫 페이지 렌더링
-            renderPage(1);
-          }).catch(err => {
-            console.error("PDF 로드 오류:", err);
-          });
-        };
-        fileReader.readAsArrayBuffer(file);
-      }
-    });
-
-    function renderPage(pageNumber) {
-      pdfDoc.getPage(pageNumber).then(page => {
-        const viewport = page.getViewport({ scale: scale });
-        
-        // PDF 캔버스 해상도 및 CSS 크기 설정
-        pdfCanvas.width = viewport.width;
-        pdfCanvas.height = viewport.height;
-        pdfCanvas.style.width = viewport.width + "px";
-        pdfCanvas.style.height = viewport.height + "px";
-        
-        // Fabric 캔버스 해상도 및 CSS 크기 설정
-        fabricCanvasEl.width = viewport.width;
-        fabricCanvasEl.height = viewport.height;
-        fabricCanvasEl.style.width = viewport.width + "px";
-        fabricCanvasEl.style.height = viewport.height + "px";
-        
-        // 부모 컨테이너 크기 설정
-        pdfWrapper.style.width = viewport.width + "px";
-        pdfWrapper.style.height = viewport.height + "px";
-        
-        // PDF 페이지 렌더링
-        const context = pdfCanvas.getContext("2d");
-        page.render({ canvasContext: context, viewport: viewport }).promise.then(() => {
-          console.log("PDF 페이지 렌더링 완료");
+    let consentOrderCounter = 0;
+    function loadPdf(consent) {
+      consentOrderCounter++;
+      let currentConsentOrder = consentOrderCounter;
+      // 기존 선택된 동의서 제거
+      if (selectedConsents.length > 0) {
+        selectedConsents.forEach(existingConsent => {
+          removeConsent(existingConsent);
         });
+      }
+      selectedConsents = [consent]; // 단일 동의서 선택
+      let loadingTask = pdfjsLib.getDocument(`/static/pdfs/${consent}.pdf`);
+      loadingTask.promise.then(pdf => {
+        console.log(`📄 PDF 문서 로드됨: ${consent}, 총 페이지 수: ${pdf.numPages}`);
+        let pagePromises = [];
+        let pageData = []; // 페이지 데이터를 저장
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+          pagePromises.push(
+            pdf.getPage(pageNum).then(page => {
+              const scale = 1.34; // 동일한 scale 적용
+              const viewport = page.getViewport({ scale: scale });
+              let canvasWrapper = document.createElement("div");
+              canvasWrapper.className = "canvas-wrapper";
+              canvasWrapper.dataset.pageNumber = pageNum;
+              canvasWrapper.dataset.consentId = consent;
+              canvasWrapper.dataset.pageCount = pdf.numPages;
+              canvasWrapper.dataset.consentOrder = currentConsentOrder;
+              canvasWrapper.style.width = viewport.width + "px";
+              canvasWrapper.style.height = viewport.height + "px";
+              let pdfCanvas = document.createElement("canvas");
+              pdfCanvas.width = viewport.width;
+              pdfCanvas.height = viewport.height;
+              pdfCanvas.style.position = "absolute";
+              pdfCanvas.style.top = "0";
+              pdfCanvas.style.left = "0";
+              pdfCanvas.style.pointerEvents = "none";
+              canvasWrapper.dataset.canvasHeight = viewport.height;
+              console.log(`PDF Canvas Height for page ${pageNum}: ${viewport.height}`);
+              let overlayCanvas = document.createElement("canvas");
+              overlayCanvas.width = viewport.width;
+              overlayCanvas.height = viewport.height;
+              overlayCanvas.style.position = "absolute";
+              overlayCanvas.style.top = "0";
+              overlayCanvas.style.left = "0";
+              overlayCanvas.style.pointerEvents = "auto";
+              overlayCanvas.style.zIndex = "100";
+              overlayCanvas.style.touchAction = "none";
+              let context = pdfCanvas.getContext("2d");
+              page.render({ canvasContext: context, viewport: viewport });
+              canvasWrapper.appendChild(pdfCanvas);
+              canvasWrapper.appendChild(overlayCanvas);
+              let fabricCanvas = new fabric.Canvas(overlayCanvas, { selection: false });
+              fabricCanvas.calcOffset();
+              canvasWrapper.fabricCanvas = fabricCanvas;
+              fabricCanvas.wrapper = canvasWrapper; // 캔버스와 래퍼 연결
+              fabricCanvases.push(fabricCanvas);
+              pageData.push({ pageNum: pageNum, wrapper: canvasWrapper });
+              return { pageNum: pageNum, wrapper: canvasWrapper };
+            })
+          );
+        }
+        Promise.all(pagePromises).then(() => {
+          // 페이지 번호로 정렬
+          pageData.sort((a, b) => a.pageNum - b.pageNum);
+          pdfContainer.innerHTML = ""; // 기존 내용 초기화
+          pageData.forEach(data => pdfContainer.appendChild(data.wrapper));
+          consentPages[consent] = pageData.map(data => data.wrapper);
+          console.log(`✅ 동의서 ${consent} 페이지 로드 완료, 정렬 후 순서:`, pageData.map(d => d.pageNum));
+          loadSignatureAreas(consent);
+          setupClickListener(); // 모든 캔버스에 이벤트 리스너 설정
+          setupKeyboardListener(); // 키보드 이벤트 리스너 설정
+        });
+      }).catch(error => console.error("🚨 PDF 로드 에러:", error));
+    }
 
-        // Fabric 캔버스 생성 혹은 크기 업데이트
-        if (!fabricCanvas) {
-          // 처음 생성할 때
-          fabricCanvas = new fabric.Canvas("fabric-canvas", { selection: true });
-          fabricCanvas.isDrawingMode = false;
-          // Fabric.js mouse:down 이벤트 등록하여 좌표 출력
-          fabricCanvas.on('mouse:down', function(event) {
-            console.log("Fabric mouse:down 이벤트 발생", event);
-            const pointer = fabricCanvas.getPointer(event.e);
-            console.log(`Fabric mouse:down - X: ${pointer.x}, Y: ${pointer.y}`);
+    function setupClickListener() {
+      fabricCanvases.forEach(canvas => {
+        canvas.off('mouse:down'); // 이전 이벤트 리스너 제거
+        console.log(`🔧 setupClickListener 호출, 캔버스:`, canvas, 'addMode:', addMode, 'wrapper:', canvas.wrapper);
+        canvas.on('mouse:down', function(options) {
+          console.log('🖱️ 마우스 다운 이벤트 감지, 캔버스:', canvas);
+          const pointer = canvas.getPointer(options.e);
+          console.log('🖱️ 포인터 좌표:', pointer);
+          const pageWrapper = canvas.wrapper;
+          const page = parseInt(pageWrapper.dataset.pageNumber);
+          const consentId = pageWrapper.dataset.consentId;
+
+          // 기존 객체 확인
+          const target = canvas.findTarget(options.e, false);
+          if (target && target.dataType === 'signatureArea') {
+            console.log('✅ 기존 signatureArea 선택:', target);
+            canvas.setActiveObject(target); // 기존 객체 선택
+            canvas.renderAll();
+            return; // 새 박스 추가 방지
+          }
+
+          // 새 박스 추가 (기존 객체가 없는 경우)
+          if (addMode && !target) {
+            const left = Math.round(pointer.x);
+            const top = Math.round(pointer.y);
+            const width = 145; // 기본 너비
+            const height = 50; // 기본 높이
+
+            console.log(`🖱️ 새 클릭 좌표: consentId=${consentId}, page=${page}, left=${left}, top=${top}`);
+
+            const index = signatures.length;
+            signatures.push({ consentId, page, left, top, width, height, index });
+            updateTable();
+
+            // 드래그 가능한 사각형 표시
+            const rect = new fabric.Rect({
+              left: left,
+              top: top,
+              width: width,
+              height: height,
+              fill: 'rgba(255, 255, 0, 0.3)',
+              selectable: true, // 드래그 및 이동 활성화
+              hasControls: true, // 크기 조정 핸들 활성화
+              hasBorders: true, // 테두리 표시
+              lockScalingFlip: true, // 비율 고정 방지
+              dataType: 'signatureArea',
+              index: index // 객체에 인덱스 저장
+            });
+            canvas.add(rect);
+            canvas.setActiveObject(rect); // 새로 추가된 객체 선택
+            canvas.renderAll();
+            console.log('✅ 드래그 가능한 노란색 박스 추가됨:', rect);
+
+            // 객체 이동 및 크기 변경 후 데이터 업데이트
+            rect.on('modified', function() {
+              const newLeft = Math.round(rect.left);
+              const newTop = Math.round(rect.top);
+              const newWidth = Math.round(rect.width);
+              const newHeight = Math.round(rect.height);
+              const index = signatures.findIndex(sig => sig.index === rect.index);
+              if (index !== -1) {
+                signatures[index] = { ...signatures[index], left: newLeft, top: newTop, width: newWidth, height: newHeight };
+                updateTable();
+                console.log('✅ 사각형 수정됨, 새 데이터:', signatures[index]);
+              }
+            });
+          }
+        });
+      });
+    }
+
+    function setupKeyboardListener() {
+      window.addEventListener('keydown', function(event) {
+        if (event.key === 'Delete') {
+          console.log('🖮 Delete 키 입력 감지');
+          fabricCanvases.forEach(canvas => {
+            const activeObject = canvas.getActiveObject();
+            if (activeObject && activeObject.dataType === 'signatureArea') {
+              const index = signatures.findIndex(sig => sig.index === activeObject.index);
+              if (index !== -1) {
+                canvas.remove(activeObject);
+                signatures.splice(index, 1);
+                updateTable();
+                renderSignatures();
+                canvas.renderAll();
+                console.log('✅ Delete 키로 선택된 박스 삭제됨, 인덱스:', index);
+              }
+            }
           });
-          // 추가: DOM click 이벤트로도 확인 (디버깅용)
-          fabricCanvasEl.addEventListener('click', function(e) {
-            console.log("fabricCanvas DOM click 이벤트 발생", e);
-          });
-        } else {
-          // 이미 생성된 경우, 크기 업데이트 및 오프셋 재계산
-          fabricCanvas.setWidth(viewport.width);
-          fabricCanvas.setHeight(viewport.height);
-          fabricCanvas.calcOffset();
         }
       });
     }
 
-    // "서명 영역 추가" 버튼 클릭 시, 드래그 가능한 직사각형 추가
-    document.getElementById("add-sign-btn").addEventListener("click", function(){
-      if (fabricCanvas) {
-        fabricCanvas.isDrawingMode = false;
-        fabricCanvas.selection = true;
-        
-        const rect = new fabric.Rect({
-          left: 50,
-          top: 50,
-          fill: 'rgba(255, 255, 0, 0.3)',
-          width: 150,
-          height: 50,
-          selectable: true,
-          evented: true,
-          hasControls: true,
-          stroke: '#FFC107',
-          strokeWidth: 2,
-          lockMovementX: false,
-          lockMovementY: false
-        });
-        fabricCanvas.add(rect);
-        fabricCanvas.setActiveObject(rect);
-        fabricCanvas.renderAll();
-        console.log("서명 영역 추가됨:", rect);
-      } else {
-        console.error("Fabric 캔버스가 초기화되지 않았습니다.");
-      }
-    });
+    function toggleAddMode() {
+      addMode = !addMode;
+      setupClickListener();
+      console.log(`🔄 서명 추가 모드 ${addMode ? '활성화' : '비활성화'}`);
+      alert(addMode ? '서명 위치 추가 모드 활성화' : '서명 위치 추가 모드 비활성화');
+    }
 
-    // "저장" 버튼 클릭 시, 현재 서명 영역 정보를 선택한 파일 이름(확장자 제거)과 함께 서버로 전송
-    document.getElementById("save-btn").addEventListener("click", function(){
-      if (fabricCanvas) {
-        const objects = fabricCanvas.getObjects();
-        const signatureAreas = objects.map(obj => ({
-          left: obj.left,
-          top: obj.top,
-          width: obj.width * obj.scaleX,
-          height: obj.height * obj.scaleY
-        }));
-        console.log("서명 영역 데이터:", signatureAreas);
-        
-        fetch('/save_signature_area', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ template: pdfFileName, areas: signatureAreas })
-        })
-        .then(response => response.json())
-        .then(data => { alert(data.message); })
-        .catch(err => { 
-          console.error("저장 오류:", err);
-          alert("저장에 실패했습니다.");
-        });
+    function selectLayer1(category) {
+      const layer1Div = document.getElementById('layer1');
+      layer1Div.innerHTML = `<button onclick="resetLayer1()">< 뒤로가기</button><span style="margin-left:5px; font-weight:bold;">${category}</span>`;
+      let layer2Data = [];
+      if (category === 'surgery') {
+        layer2Data = ["심장 수술", "뇌 수술", "복부 수술", "정형외과 수술", "흉부 수술", "소아외과 수술", "성형 수술", "비뇨기과 수술", "안면 수술", "일반외과 수술"];
+      } else if (category === 'procedure') {
+        layer2Data = ["치과 시술", "안과 시술", "피부 시술", "정형 시술", "내시경 시술", "레이저 시술", "주사 시술", "재활 시술", "미용 시술", "비침습 시술"];
+      } else if (category === 'underlying') {
+        layer2Data = ["당뇨병", "고혈압", "심혈관 질환", "만성 호흡기 질환", "만성 신장 질환", "간 질환", "면역 질환", "비만", "갑상선 질환", "관절염"];
       }
-    });
+      const layer2Div = document.getElementById('layer2');
+      layer2Div.innerHTML = '';
+      layer2Data.forEach(item => {
+        const btn = document.createElement('button');
+        btn.textContent = item;
+        btn.onclick = function() { selectLayer2(category, item); };
+        layer2Div.appendChild(btn);
+      });
+      layer2Div.style.display = "flex";
+      const layer3Div = document.getElementById('layer3');
+      layer3Div.innerHTML = '';
+      layer3Div.style.display = "none";
+    }
+
+    function resetLayer1() {
+      const layer1Div = document.getElementById('layer1');
+      layer1Div.innerHTML = `
+        <button onclick="selectLayer1('surgery')">수술</button>
+        <button onclick="selectLayer1('procedure')">시술</button>
+        <button onclick="selectLayer1('underlying')">기저질환</button>
+      `;
+      document.getElementById('layer2').innerHTML = '';
+      document.getElementById('layer2').style.display = "none";
+      document.getElementById('layer3').innerHTML = '';
+      document.getElementById('layer3').style.display = "none";
+    }
+
+    function selectLayer2(category, subCategory) {
+      const layer2Div = document.getElementById('layer2');
+      layer2Div.innerHTML = `<button onclick="resetLayer2('${category}')">< 뒤로가기</button><span style="margin-left:5px; font-weight:bold;">${subCategory}</span>`;
+      let layer3Data = [];
+      if (category === 'surgery') {
+        if (subCategory === "심장 수술") {
+          layer3Data = ["마취 동의서", "심장판막치환술 동의서", "심근재생치료 동의서", "심장동맥스텐트 삽입 동의서", "심장전도계 수술 동의서"];
+        } else if (subCategory === "뇌 수술") {
+          layer3Data = ["뇌종양 절제술 동의서", "뇌동맥류 클리핑 동의서", "뇌출혈 응급 수술 동의서", "뇌신경 재건술 동의서", "뇌내 출혈 치료 동의서"];
+        }
+      } else if (category === 'procedure') {
+        if (subCategory === "치과 시술") {
+          layer3Data = ["임플란트 시술 동의서", "치아 교정 시술 동의서", "치주 치료 동의서", "보철 치료 동의서", "치근 절제 시술 동의서"];
+        }
+      } else if (category === 'underlying') {
+        if (subCategory === "당뇨병") {
+          layer3Data = ["당뇨병 관리 동의서", "당뇨병 치료 동의서", "인슐린 투여 동의서", "혈당 관리 동의서", "당뇨 합병증 예방 동의서"];
+        }
+      }
+      const layer3Div = document.getElementById('layer3');
+      layer3Div.innerHTML = '';
+      layer3Data.forEach(item => {
+        const btn = document.createElement('button');
+        btn.textContent = item;
+        btn.onclick = function() { selectFinalConsent(item, this); };
+        if (selectedConsents.includes(item)) {
+          btn.style.backgroundColor = "#aaa";
+          btn.style.cursor = "default";
+        }
+        layer3Div.appendChild(btn);
+      });
+      layer3Div.style.display = "flex";
+    }
+
+    function resetLayer2(category) {
+      let layer2Data = [];
+      if (category === 'surgery') {
+        layer2Data = ["심장 수술", "뇌 수술", "복부 수술", "정형외과 수술", "흉부 수술", "소아외과 수술", "성형 수술", "비뇨기과 수술", "안면 수술", "일반외과 수술"];
+      } else if (category === 'procedure') {
+        layer2Data = ["치과 시술", "안과 시술", "피부 시술", "정형 시술", "내시경 시술", "레이저 시술", "주사 시술", "재활 시술", "미용 시술", "비침습 시술"];
+      } else if (category === 'underlying') {
+        layer2Data = ["당뇨병", "고혈압", "심혈관 질환", "만성 호흡기 질환", "만성 신장 질환", "간 질환", "면역 질환", "비만", "갑상선 질환", "관절염"];
+      }
+      const layer2Div = document.getElementById('layer2');
+      layer2Div.innerHTML = '';
+      layer2Data.forEach(item => {
+        const btn = document.createElement('button');
+        btn.textContent = item;
+        btn.onclick = function() { selectLayer2(category, item); };
+        layer2Div.appendChild(btn);
+      });
+      layer2Div.style.display = "flex";
+      const layer3Div = document.getElementById('layer3');
+      layer3Div.innerHTML = '';
+      layer3Div.style.display = "none";
+    }
+
+    function selectFinalConsent(consentId, btn) {
+      if (selectedConsents.includes(consentId)) {
+        if (confirm(consentId + " 동의서를 제거하시겠습니까?")) {
+          removeConsent(consentId);
+          btn.style.backgroundColor = "#28a745";
+          btn.style.cursor = "pointer";
+        }
+        return;
+      }
+      loadPdf(consentId);
+      alert(consentId + " 동의서가 추가되었습니다.");
+      btn.style.backgroundColor = "#aaa";
+      btn.style.cursor = "default";
+    }
+
+    function removeConsent(consent) {
+      if (!selectedConsents.includes(consent)) {
+        alert(consent + " 동의서는 추가되지 않았습니다.");
+        return;
+      }
+      console.log(`삭제 요청된 동의서: ${consent}`);
+      if (consentPages[consent]) {
+        consentPages[consent].forEach(wrapper => {
+          if (pdfContainer.contains(wrapper)) {
+            pdfContainer.removeChild(wrapper);
+            console.log(`✅ 삭제된 동의서 페이지: ${consent}, 페이지 번호: ${wrapper.dataset.pageNumber}`);
+          } else {
+            console.warn(`🚨 삭제하려는 동의서(${consent})의 페이지가 존재하지 않음`);
+          }
+        });
+        delete consentPages[consent];
+      } else {
+        console.warn(`🚨 consentPages[${consent}]가 존재하지 않음`);
+      }
+      let updatedCanvases = [];
+      fabricCanvases.forEach(canvas => {
+        if (!canvas.wrapper || canvas.wrapper.dataset.consentId !== consent) {
+          updatedCanvases.push(canvas);
+        } else {
+          console.log(`✅ 삭제된 fabricCanvas 관련 동의서: ${consent}`);
+        }
+      });
+      fabricCanvases = updatedCanvases;
+      signatures = signatures.filter(sig => sig.consentId !== consent);
+      selectedConsents = selectedConsents.filter(item => item !== consent);
+      console.log(`✅ 현재 선택된 동의서 목록:`, selectedConsents);
+      updateTable();
+      renderSignatures();
+      alert(consent + " 동의서가 제거되었습니다");
+    }
+
+    function saveToServer() {
+      fetch('/save_signature_areas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          signature_areas: signatures
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.message) {
+          alert(data.message);
+        } else {
+          alert('저장 중 오류가 발생했습니다.');
+          console.error('🚨 서버 응답:', data);
+        }
+      })
+      .catch(error => {
+        console.error('🚨 저장 오류:', error);
+        alert('서버 요청 중 오류가 발생했습니다.');
+      });
+    }
+
+    function downloadJSON() {
+      const jsonData = JSON.stringify(signatures, null, 2);
+      const blob = new Blob([jsonData], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `signature_areas.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function updateTable() {
+      const tbody = document.getElementById('signatureListBody');
+      tbody.innerHTML = '';
+      signatures.forEach((sig, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${sig.consentId || 'undefined'}</td>
+          <td>${sig.page}</td>
+          <td>${sig.left}</td>
+          <td>${sig.top}</td>
+          <td>${sig.width}</td>
+          <td>${sig.height}</td>
+          <td>
+            <button onclick="editSignature(${index})">수정</button>
+            <button onclick="deleteSignature(${index})">삭제</button>
+          </td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+    function editSignature(index) {
+      const sig = signatures[index];
+      signatures.splice(index, 1);
+      updateTable();
+      renderSignatures();
+    }
+
+    function deleteSignature(index) {
+      if (confirm('정말 삭제하시겠습니까?')) {
+        signatures.splice(index, 1);
+        updateTable();
+        renderSignatures();
+      }
+    }
+
+    function renderSignatures() {
+      fabricCanvases.forEach(canvas => {
+        console.log('🔧 renderSignatures 호출, 캔버스:', canvas, 'wrapper:', canvas.wrapper);
+        canvas.getObjects().forEach(obj => {
+          if (obj.dataType === 'signatureArea') {
+            canvas.remove(obj);
+            console.log('✅ 기존 signatureArea 제거:', obj);
+          }
+        });
+        signatures.forEach((sig, index) => {
+          if (canvas.wrapper && canvas.wrapper.dataset.consentId === sig.consentId && canvas.wrapper.dataset.pageNumber == sig.page) {
+            const rect = new fabric.Rect({
+              left: sig.left,
+              top: sig.top,
+              width: sig.width,
+              height: sig.height,
+              fill: 'rgba(255, 255, 0, 0.3)',
+              selectable: true, // 드래그 및 이동 활성화
+              hasControls: true, // 크기 조정 핸들 활성화
+              hasBorders: true, // 테두리 표시
+              lockScalingFlip: true, // 비율 고정 방지
+              dataType: 'signatureArea',
+              index: index // 객체에 인덱스 저장
+            });
+            canvas.add(rect);
+            console.log('✅ 드래그 가능한 노란색 박스 추가:', rect, '캔버스 크기:', { width: canvas.width, height: canvas.height });
+
+            // 객체 이동 및 크기 변경 후 데이터 업데이트
+            rect.on('modified', function() {
+              const newLeft = Math.round(rect.left);
+              const newTop = Math.round(rect.top);
+              const newWidth = Math.round(rect.width);
+              const newHeight = Math.round(rect.height);
+              const index = signatures.findIndex(s => s.index === rect.index);
+              if (index !== -1) {
+                signatures[index] = { ...signatures[index], left: newLeft, top: newTop, width: newWidth, height: newHeight };
+                updateTable();
+                console.log('✅ 사각형 수정됨, 새 데이터:', signatures[index]);
+              }
+            });
+          }
+        });
+        canvas.renderAll();
+        console.log('✅ 캔버스 렌더링 완료:', canvas);
+      });
+      console.log('✅ 모든 서명 영역 렌더링 완료');
+    }
+
+    // window.onload에서 기본 동의서 로드 제거
+    window.onload = function() {
+      console.log("페이지 로드 완료, 기본 동의서 로드 안 함");
+    };
   </script>
 </body>
 </html>

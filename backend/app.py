@@ -21,6 +21,10 @@ def index():
 def consent():
     return render_template("consent.html")
 
+@app.route('/admin')
+def admin():
+    return render_template("admin.html")
+
 @app.route('/static/pdfs/<filename>')
 def serve_pdf(filename):
     return send_from_directory('static/pdfs', filename, mimetype='application/pdf')

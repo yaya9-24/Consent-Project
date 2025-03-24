@@ -4,10 +4,12 @@ import fitz
 import base64
 import io
 import json
+import time
 from PIL import Image
 from urllib.parse import unquote
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
+app.config['TEMPLATES_AUTO_RELOAD'] = True  # 템플릿 자동 리로드 활성화
 
 SIGNATURE_DIR = os.path.join(app.root_path, 'get_signature_areas')
 FINAL_PDF_PATH = os.path.join(SIGNATURE_DIR, "final_signed_consent.pdf")
@@ -24,6 +26,7 @@ def consent():
 @app.route('/admin')
 def admin():
     return render_template("admin.html")
+
 
 @app.route('/static/pdfs/<filename>')
 def serve_pdf(filename):
@@ -90,9 +93,14 @@ def finalize_signatures():
 
     if not selected_consents:
         return jsonify({"error": "선택된 동의서가 없습니다."}), 400
-
     if not signature_data:
         return jsonify({"error": "서명 데이터가 없습니다."}), 400
+
+    # 타임스탬프 생성 (YYYYMMDDHHMMSS 형식)
+    timestamp = time.strftime("%Y%m%d%H%M%S")
+    # 동적 파일 이름 생성
+    final_pdf_filename = f"{timestamp}_final_consent.pdf"
+    final_pdf_path = os.path.join(SIGNATURE_DIR, final_pdf_filename)
 
     merged_pdf = fitz.open()
 
@@ -120,7 +128,6 @@ def finalize_signatures():
                 img_stream.seek(0)
                 canvas_rect = fitz.Rect(0, 0, pdf_width, pdf_height)
                 page.insert_image(canvas_rect, stream=img_stream, keep_proportion=True)
-                print(f"✅ 캔버스 이미지 삽입 완료: 동의서 {consent}, 페이지 {page_num + 1}")
 
             # 서명 삽입
             for area in consent_signatures:
@@ -159,8 +166,8 @@ def finalize_signatures():
 
         merged_pdf.insert_pdf(doc)
 
-    merged_pdf.save(FINAL_PDF_PATH, deflate=False, garbage=0)
-    return jsonify({"message": "서명 저장 완료!", "signed_pdf": FINAL_PDF_PATH})
+    merged_pdf.save(final_pdf_path, deflate=False, garbage=0)
+    return jsonify({"message": "서명 저장 완료!", "signed_pdf": final_pdf_filename})
 
 def merge_pdfs(pdf_list, output_path):
     try:

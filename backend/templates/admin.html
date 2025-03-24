@@ -143,18 +143,22 @@
     let addMode = false;
 
     function loadSignatureAreas(consent) {
-      const encodedConsent = encodeURIComponent(consent);
-      const url = `/backend/get_signature_areas/${encodedConsent}_signature_areas.json`;
-      console.log("🔄 서명 영역 로드 URL:", url);
-      fetch(url)
-        .then(response => response.json())
-        .then(data => {
-          console.log("✅ 불러온 서명 영역 데이터:", data);
-          signatures = data; // 기존 서명 영역 로드
-          renderSignatures(); // 데이터 로드 후 즉시 렌더링
-          updateTable();
-        })
-        .catch(error => console.error("🚨 서명 영역 로드 실패:", error));
+        if (!consentPages[consent]) {
+            console.warn(`🚨 PDF가 로드되지 않음: ${consent}, 서명 영역 로드 스킵`);
+            return;
+        }
+        const encodedConsent = encodeURIComponent(consent);
+        const url = `/backend/get_signature_areas/${encodedConsent}_signature_areas.json`;
+        console.log("🔄 서명 영역 로드 URL:", url);
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                console.log("✅ 불러온 서명 영역 데이터:", data);
+                signatures = data;
+                renderSignatures();
+                updateTable();
+            })
+            .catch(error => console.error("🚨 서명 영역 로드 실패:", error));
     }
 
     let consentOrderCounter = 0;
@@ -247,7 +251,9 @@
           // 기존 객체 확인
           const target = canvas.findTarget(options.e, false);
           if (target && target.dataType === 'signatureArea') {
-            console.log('✅ 기존 signatureArea 선택:', target);
+            const actualWidth = Math.round(target.width * target.scaleX); // 실제 너비
+            const actualHeight = Math.round(target.height * target.scaleY); // 실제 높이
+            console.log(`✅ 기존 signatureArea 선택: consentId=${consentId}, page=${page}, left=${Math.round(target.left)}, top=${Math.round(target.top)}, width=${actualWidth}, height=${actualHeight}`);
             canvas.setActiveObject(target); // 기존 객체 선택
             canvas.renderAll();
             return; // 새 박스 추가 방지
@@ -260,7 +266,7 @@
             const width = 145; // 기본 너비
             const height = 50; // 기본 높이
 
-            console.log(`🖱️ 새 클릭 좌표: consentId=${consentId}, page=${page}, left=${left}, top=${top}`);
+            console.log(`🖱️ 새 서명 위치 추가: consentId=${consentId}, page=${page}, left=${left}, top=${top}, width=${width}, height=${height}`);
 
             const index = signatures.length;
             signatures.push({ consentId, page, left, top, width, height, index });
@@ -286,17 +292,22 @@
             console.log('✅ 드래그 가능한 노란색 박스 추가됨:', rect);
 
             // 객체 이동 및 크기 변경 후 데이터 업데이트
+            rect.on('scaling', function() {
+                console.log('📏 사각형 크기 조절 중: width=', Math.round(rect.width * rect.scaleX), 'height=', Math.round(rect.height * rect.scaleY));
+            });
             rect.on('modified', function() {
-              const newLeft = Math.round(rect.left);
-              const newTop = Math.round(rect.top);
-              const newWidth = Math.round(rect.width);
-              const newHeight = Math.round(rect.height);
-              const index = signatures.findIndex(sig => sig.index === rect.index);
-              if (index !== -1) {
-                signatures[index] = { ...signatures[index], left: newLeft, top: newTop, width: newWidth, height: newHeight };
-                updateTable();
-                console.log('✅ 사각형 수정됨, 새 데이터:', signatures[index]);
-              }
+                const newLeft = Math.round(rect.left);
+                const newTop = Math.round(rect.top);
+                const newWidth = Math.round(rect.width * rect.scaleX);
+                const newHeight = Math.round(rect.height * rect.scaleY);
+                const index = signatures.findIndex(sig => sig.index === rect.index);
+                if (index !== -1) {
+                    signatures[index] = { ...signatures[index], left: newLeft, top: newTop, width: newWidth, height: newHeight };
+                    updateTable();
+                    console.log(`🔄 서명 위치 수정됨: consentId=${signatures[index].consentId}, page=${signatures[index].page}, left=${newLeft}, top=${newTop}, width=${newWidth}, height=${newHeight}`);
+                } else {
+                    console.warn('🚨 수정된 사각형의 인덱스를 찾을 수 없음:', rect.index);
+                }
             });
           }
         });
@@ -376,7 +387,7 @@
       let layer3Data = [];
       if (category === 'surgery') {
         if (subCategory === "심장 수술") {
-          layer3Data = ["마취 동의서", "심장판막치환술 동의서", "심근재생치료 동의서", "심장동맥스텐트 삽입 동의서", "심장전도계 수술 동의서"];
+          layer3Data = ["마취 동의서", "관절경 검사", "심근재생치료 동의서", "심장동맥스텐트 삽입 동의서", "심장전도계 수술 동의서"];
         } else if (subCategory === "뇌 수술") {
           layer3Data = ["뇌종양 절제술 동의서", "뇌동맥류 클리핑 동의서", "뇌출혈 응급 수술 동의서", "뇌신경 재건술 동의서", "뇌내 출혈 치료 동의서"];
         }
@@ -579,13 +590,13 @@
             rect.on('modified', function() {
               const newLeft = Math.round(rect.left);
               const newTop = Math.round(rect.top);
-              const newWidth = Math.round(rect.width);
-              const newHeight = Math.round(rect.height);
+              const newWidth = Math.round(rect.width * rect.scaleX);
+              const newHeight = Math.round(rect.height * rect.scaleY);
               const index = signatures.findIndex(s => s.index === rect.index);
               if (index !== -1) {
                 signatures[index] = { ...signatures[index], left: newLeft, top: newTop, width: newWidth, height: newHeight };
                 updateTable();
-                console.log('✅ 사각형 수정됨, 새 데이터:', signatures[index]);
+                console.log(`🔄 서명 위치 수정됨: consentId=${signatures[index].consentId}, page=${signatures[index].page}, left=${newLeft}, top=${newTop}, width=${newWidth}, height=${newHeight}`);
               }
             });
           }

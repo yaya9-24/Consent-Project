@@ -1,0 +1,83 @@
+[
+  {
+    "consentId": "관절경 검사",
+    "page": 12,
+    "left": 532,
+    "top": 329,
+    "width": 166,
+    "height": 43,
+    "index": 0
+  },
+  {
+    "consentId": "관절경 검사",
+    "page": 11,
+    "left": 561,
+    "top": 267,
+    "width": 138,
+    "height": 42,
+    "index": 2
+  },
+  {
+    "consentId": "관절경 검사",
+    "page": 10,
+    "left": 557,
+    "top": 626,
+    "width": 142,
+    "height": 44,
+    "index": 3
+  },
+  {
+    "consentId": "관절경 검사",
+    "page": 9,
+    "left": 562,
+    "top": 624,
+    "width": 138,
+    "height": 44,
+    "index": 4
+  },
+  {
+    "consentId": "관절경 검사",
+    "page": 6,
+    "left": 558,
+    "top": 410,
+    "width": 141,
+    "height": 43,
+    "index": 5
+  },
+  {
+    "consentId": "관절경 검사",
+    "page": 5,
+    "left": 560,
+    "top": 300,
+    "width": 137,
+    "height": 44,
+    "index": 7
+  },
+  {
+    "consentId": "관절경 검사",
+    "page": 12,
+    "left": 510,
+    "top": 129,
+    "width": 189,
+    "height": 65,
+    "index": 6
+  },
+  {
+    "consentId": "관절경 검사",
+    "page": 4,
+    "left": 563,
+    "top": 304,
+    "width": 134,
+    "height": 43,
+    "index": 7
+  },
+  {
+    "consentId": "관절경 검사",
+    "page": 3,
+    "left": 562,
+    "top": 846,
+    "width": 135,
+    "height": 44,
+    "index": 8
+  }
+]

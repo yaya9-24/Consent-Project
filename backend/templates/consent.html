@@ -180,15 +180,15 @@
     function loadSignatureAreas(consent) {
       const encodedConsent = encodeURIComponent(consent);
       const url = `/backend/get_signature_areas/${encodedConsent}_signature_areas.json`;
-      console.log("🔄 서명 영역 로드 URL:", url);
+      //console.log("🔄 서명 영역 로드 URL:", url);
       fetch(url)
         .then(response => response.json())
         .then(data => {
-          console.log("✅ 불러온 서명 영역 데이터:", data);
+          //console.log("✅ 불러온 서명 영역 데이터:", data);
           let consentPagesArray = [...pdfContainer.children]
             .filter(page => page.dataset.consentId === consent)
             .sort((a, b) => parseInt(a.dataset.pageNumber) - parseInt(b.dataset.pageNumber));
-          console.log(`✅ 동의서 ${consent}의 페이지 배열:`, consentPagesArray);
+          //console.log(`✅ 동의서 ${consent}의 페이지 배열:`, consentPagesArray);
           data.forEach(area => {
             let pageIndex = area.page - 1;
             let pageWrapper = consentPagesArray[pageIndex];
@@ -236,7 +236,7 @@
       let currentConsentOrder = consentOrderCounter;
       let loadingTask = pdfjsLib.getDocument(`/static/pdfs/${consent}.pdf`);
       loadingTask.promise.then(pdf => {
-        console.log(`📄 PDF 문서 로드됨: ${consent}, 총 페이지 수: ${pdf.numPages}`);
+        //console.log(`📄 PDF 문서 로드됨: ${consent}, 총 페이지 수: ${pdf.numPages}`);
         let pagePromises = [];
         let newConsentPages = [];
         for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
@@ -259,7 +259,7 @@
               pdfCanvas.style.left = "0";
               pdfCanvas.style.pointerEvents = "none";
               canvasWrapper.dataset.canvasHeight = viewport.height;
-              console.log(`PDF Canvas Height for page ${pageNum}: ${viewport.height}`);
+              //console.log(`PDF Canvas Height for page ${pageNum}: ${viewport.height}`);
               let overlayCanvas = document.createElement("canvas");
               overlayCanvas.width = viewport.width;
               overlayCanvas.height = viewport.height;
@@ -300,7 +300,7 @@
           newConsentPages.forEach(page => {
             if (page.fabricCanvas) fabricCanvases.push(page.fabricCanvas);
           });
-          console.log(`✅ 동의서 ${consent} 페이지 로드 완료:`, newConsentPages);
+          //console.log(`✅ 동의서 ${consent} 페이지 로드 완료:`, newConsentPages);
           loadSignatureAreas(consent);
         });
       }).catch(error => console.error("🚨 PDF 로드 에러:", error));
@@ -339,7 +339,7 @@
           fabricCanvas.isDrawingMode = true;
         } else if (tool === "text") {
           fabricCanvas.isDrawingMode = false;
-          console.log("텍스트 입력 활성화됨!");
+          //console.log("텍스트 입력 활성화됨!");
           fabricCanvas.once('mouse:down', function(event) {
             if (activeTool === "text") {
               let pointer = fabricCanvas.getPointer(event.e);
@@ -471,7 +471,7 @@
       let layer3Data = [];
       if (category === 'surgery') {
         if(subCategory === "심장 수술"){
-          layer3Data = ["마취 동의서", "심장판막치환술 동의서", "심근재생치료 동의서", "심장동맥스텐트 삽입 동의서", "심장전도계 수술 동의서"];
+          layer3Data = ["마취 동의서", "관절경 검사", "심근재생치료 동의서", "심장동맥스텐트 삽입 동의서", "심장전도계 수술 동의서"];
         } else if(subCategory === "뇌 수술"){
           layer3Data = ["뇌종양 절제술 동의서", "뇌동맥류 클리핑 동의서", "뇌출혈 응급 수술 동의서", "뇌신경 재건술 동의서", "뇌내 출혈 치료 동의서"];
         }
@@ -564,7 +564,7 @@
       });
       fabricCanvases = updatedCanvases;
       selectedConsents = selectedConsents.filter(item => item !== consent);
-      console.log(`✅ 현재 선택된 동의서 목록:`, selectedConsents);
+      //console.log(`✅ 현재 선택된 동의서 목록:`, selectedConsents);
       alert(consent + " 동의서가 제거되었습니다.");
     }
     document.addEventListener('keydown', function(e) {
@@ -625,14 +625,14 @@
         canvas.add(img);
         canvas.renderAll();
       }, { crossOrigin: 'anonymous' });
-      console.log(`✅ 서명 미리보기 적용 완료: 동의서 ${consentId}, 페이지 ${area.page}`);
+      //console.log(`✅ 서명 미리보기 적용 완료: 동의서 ${consentId}, 페이지 ${area.page}`);
     }
 
     let savedSignatureData = null;
 
     function saveSignature() {
       let signatureData = signatureCanvas.toDataURL({ format: 'png', multiplier: 3 });
-      console.log("Signature Data URL:", signatureData);
+      //console.log("Signature Data URL:", signatureData);
       if (!signatureData) {
         alert("서명을 입력하세요!");
         return;
@@ -655,7 +655,7 @@
         let scaleFactor = canvas.width / 800;
         area.scaleFactor = scaleFactor;
         area.pdfHeight = parseFloat(pageWrapper.dataset.canvasHeight);
-        console.log(`Signature Area with Scale:`, area);
+        //console.log(`Signature Area with Scale:`, area);
       });
       alert("모든 서명 영역에 서명이 적용되었습니다!");
       closeModal();
@@ -663,7 +663,7 @@
 
     function finalizeSignatures() {
       let signatureData = savedSignatureData;
-      console.log("Signature Data URL in finalize:", signatureData);
+      //console.log("Signature Data URL in finalize:", signatureData);
       if (!signatureData) {
         alert("서명 데이터가 없습니다.");
         return;
@@ -685,7 +685,7 @@
         }
 
         let objects = canvas.getObjects();
-        console.log(`[DEBUG] 캔버스 객체 목록 (페이지 ${pageWrapper.dataset.pageNumber}):`, objects);
+        //console.log(`[DEBUG] 캔버스 객체 목록 (페이지 ${pageWrapper.dataset.pageNumber}):`, objects);
 
         // 서명 이미지와 서명 영역 제외
         let contentObjects = objects.filter(obj => {
@@ -693,7 +693,7 @@
           let isSignatureArea = obj instanceof fabric.Rect && obj.dataType === 'signatureArea';
           return !isSignature && !isSignatureArea;
         });
-        console.log(`[DEBUG] 서명 이미지와 서명 영역을 제외한 객체 (페이지 ${pageWrapper.dataset.pageNumber}):`, contentObjects);
+        //console.log(`[DEBUG] 서명 이미지와 서명 영역을 제외한 객체 (페이지 ${pageWrapper.dataset.pageNumber}):`, contentObjects);
 
         let tempCanvas = new fabric.Canvas(null);
         tempCanvas.setDimensions({ width: canvas.width, height: canvas.height });
@@ -706,12 +706,12 @@
                   tempCanvas.add(cloned);
                   resolve();
                 } else {
-                  console.warn(`[DEBUG] 객체 복사 실패:`, obj);
+                  //console.warn(`[DEBUG] 객체 복사 실패:`, obj);
                   resolve();
                 }
               });
             } catch (error) {
-              console.error(`[DEBUG] 객체 복사 중 오류:`, obj, error);
+              //console.error(`[DEBUG] 객체 복사 중 오류:`, obj, error);
               resolve();
             }
           });
@@ -727,11 +727,11 @@
             pdfHeight: parseFloat(pageWrapper.dataset.canvasHeight),
             scaleFactor: canvas.width / 800
           });
-          console.log(`[DEBUG] 캔버스 이미지 생성 완료 (페이지 ${pageWrapper.dataset.pageNumber}):`, canvasImage);
+          //console.log(`[DEBUG] 캔버스 이미지 생성 완료 (페이지 ${pageWrapper.dataset.pageNumber}):`, canvasImage);
 
           tempCanvas.dispose();
         }).catch(error => {
-          console.error(`[DEBUG] Promise.all 오류 (페이지 ${pageWrapper.dataset.pageNumber}):`, error);
+          //console.error(`[DEBUG] Promise.all 오류 (페이지 ${pageWrapper.dataset.pageNumber}):`, error);
         });
       });
 
@@ -749,7 +749,7 @@
           .then(data => {
             if (data.signed_pdf) {
               alert("모든 서명 및 캔버스 객체가 최종 PDF에 반영되었습니다!");
-              console.log("✅ 최종 저장 완료!", data.signed_pdf);
+              //console.log("✅ 최종 저장 완료!", data.signed_pdf);
             } else {
               alert("저장 중 오류가 발생했습니다.");
               console.error("🚨 서버 응답:", data);

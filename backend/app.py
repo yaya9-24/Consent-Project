@@ -14,7 +14,7 @@ app = Flask(__name__, template_folder="templates", static_folder="static")
 TEMP_DIR = "/app/temp_files"
 if not os.path.exists(TEMP_DIR):
     os.makedirs(TEMP_DIR)
-app.config['TEMPLATES_AUTO_RELOAD'] = False  # 템플릿 자동 리로드 활성화
+app.config['TEMPLATES_AUTO_RELOAD'] = True  # 템플릿 자동 리로드 활성화
 
 SIGNATURE_DIR = os.path.join(app.root_path, 'get_signature_areas')
 FINAL_PDF_PATH = os.path.join(SIGNATURE_DIR, "final_signed_consent.pdf")
@@ -278,4 +278,4 @@ def merge_pdfs(pdf_list, output_path):
         return False
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
+    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=True)

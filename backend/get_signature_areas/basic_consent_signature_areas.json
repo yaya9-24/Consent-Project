@@ -1,9 +1,224 @@
 [
   {
     "page": 1,
-    "left": 584,
-    "top": 990,
-    "width": 150,
-    "height": 50
+    "left": 555,
+    "top": 222,
+    "field": "diagnosis"
+  },
+  {
+    "page": 1,
+    "left": 555,
+    "top": 268,
+    "field": "procedure"
+  },
+  {
+    "page": 1,
+    "left": 348,
+    "top": 317,
+    "field": "doctor1.name"
+  },
+  {
+    "page": 1,
+    "left": 425,
+    "top": 302,
+    "field": "doctor1.isSpecialist" 
+  },
+  {
+    "page": 1,
+    "left": 620,
+    "top": 306,
+    "field": "doctor1.specialty"
+  },
+  {
+    "page": 1,
+    "left": 425,
+    "top": 325,
+    "field": "doctor1.isGeneral" 
+  },
+  {
+    "page": 1,
+    "left": 620,
+    "top": 330,
+    "field": "doctor1.department"
+  },
+  {
+    "page": 1,
+    "left": 348,
+    "top": 366,
+    "field": "doctor2.name"
+  },
+  {
+    "page": 1,
+    "left": 425,
+    "top": 351,
+    "field": "doctor2.isSpecialist" 
+  },
+  {
+    "page": 1,
+    "left": 620,
+    "top": 355,
+    "field": "doctor2.specialty"
+  },
+  {
+    "page": 1,
+    "left": 425,
+    "top": 374,
+    "field": "doctor2.isGeneral" 
+  },
+  {
+    "page": 1,
+    "left": 620,
+    "top": 377,
+    "field": "doctor2.department"
+  },
+  {
+    "page": 1,
+    "left": 560,
+    "top": 413,
+    "field": "date"
+  },
+  {
+    "page": 1,
+    "left": 516,
+    "top": 447,
+    "field": "area.sideLeft"
+  },
+  {
+    "page": 1,
+    "left": 562,
+    "top": 447,
+    "field": "area.sideRight"
+  },
+  {
+    "page": 1,
+    "left": 627,
+    "top": 447,
+    "field": "area.sideBoth"
+  },
+  {
+    "page": 1,
+    "left": 560,
+    "top": 475,
+    "field": "area.part"
+  },
+  {
+    "page": 1,
+    "left": 338,
+    "top": 527,
+    "field": "diseases.과거병력"
+  },
+  {
+    "page": 1,
+    "left": 338,
+    "top": 565,
+    "field": "diseases.특이체질"
+  },
+  {
+    "page": 1,
+    "left": 338,
+    "top": 592,
+    "field": "diseases.고·저혈압"
+  },
+  {
+    "page": 1,
+    "left": 338,
+    "top": 616,
+    "field": "diseases.복용약물"
+  },
+  {
+    "page": 1,
+    "left": 338,
+    "top": 640,
+    "field": "diseases.흡연여부"
+  },
+  {
+    "page": 1,
+    "left": 338,
+    "top": 675,
+    "field": "diseases.심장질환"
+  },
+  {
+    "page": 1,
+    "left": 338,
+    "top": 723,
+    "field": "diseases.신장질환"
+  },
+  {
+    "page": 1,
+    "left": 338,
+    "top": 765,
+    "field": "diseases.간질환"
+  },
+  {
+    "page": 1,
+    "left": 338,
+    "top": 804,
+    "field": "diseases.부신피질 호르몬 장애"
+  },
+  {
+    "page": 1,
+    "left": 338,
+    "top": 842,
+    "field": "diseases.임신 여부"
+  },
+  {
+    "page": 1,
+    "left": 635,
+    "top": 527,
+    "field": "diseases.알레르기"
+  },
+  {
+    "page": 1,
+    "left": 635,
+    "top": 565,
+    "field": "diseases.당뇨병"
+  },
+  {
+    "page": 1,
+    "left": 635,
+    "top": 592,
+    "field": "diseases.마약사고"
+  },
+  {
+    "page": 1,
+    "left": 635,
+    "top": 616,
+    "field": "diseases.기도이상 유무"
+  },
+  {
+    "page": 1,
+    "left": 635,
+    "top": 640,
+    "field": "diseases.출혈소인"
+  },
+  {
+    "page": 1,
+    "left": 635,
+    "top": 675,
+    "field": "diseases.호흡기질환"
+  },
+  {
+    "page": 1,
+    "left": 635,
+    "top": 723,
+    "field": "diseases.뇌혈관질환"
+  },
+  {
+    "page": 1,
+    "left": 635,
+    "top": 765,
+    "field": "diseases.갑상선질환"
+  },
+  {
+    "page": 1,
+    "left": 635,
+    "top": 804,
+    "field": "diseases.정신과질환"
+  },
+  {
+    "page": 1,
+    "left": 635,
+    "top": 842,
+    "field": "diseases.기타"
   }
 ]

@@ -92,6 +92,24 @@
       color: white;
       border-radius: 5px;
     }
+    .consent-table {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+    }
+
+    @media (max-width: 768px) {
+        .consent-table th,
+        .consent-table td {
+            font-size: 14px;
+            padding: 5px;
+        }
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+    }
   </style>
 </head>
 <body>
@@ -281,7 +299,7 @@
               fabricCanvas.perPixelTargetFind = true;
               fabricCanvas.targetFindTolerance = 5;
               fabricCanvas.calcOffset();
-              canvasWrapper.fabricCanvas = fabricCanvas;
+              canvasWrapper.fabricCanvas = fabricCanvas;              
               return { pageNum: pageNum, wrapper: canvasWrapper };
             })
           );
@@ -581,6 +599,7 @@
         });
       }
     });
+    
 
     let signatureCanvas = new fabric.Canvas('signature-canvas');
     signatureCanvas.isDrawingMode = true;
@@ -761,9 +780,74 @@
       }, 1000);
     }
 
-    window.onload = function() {
-      let defaultConsent = "basic_consent";
+    function getValueFromFieldPath(data, path) {
+      const value = path.split('.').reduce((obj, key) => obj?.[key], data);
+
+      // 체크박스용 필드 처리
+      if (typeof value === "boolean") {
+        return value ? "✔" : "";  // 체크된 건 ☑, 아닌 건 □
+      }
+
+      return value ?? "";
+    }
+
+    function getDiseaseDisplayValue(diseasesArray, fieldName) {
+      const disease = diseasesArray.find(d => d.name === fieldName);
+      if (!disease) return "";
+      if (disease.detail && disease.detail.trim()) {
+        return disease.detail; // 내용 입력된 경우 내용 출력
+      } else if (disease.checked) {
+        return "✔"; // 체크만 한 경우는 '✔' 표시
+      }
+      return "";
+    }
+
+    window.onload = function () {
+      const defaultConsent = "basic_consent";
       loadPdf(defaultConsent);
+
+      const patientData = JSON.parse(sessionStorage.getItem("patientData") || "{}");
+      //console.log("넘어온 환자 정보:", patientData);
+
+      fetch("/backend/get_signature_areas/basic_consent_signature_areas.json")
+        .then(res => res.json())
+        .then(positions => {
+          setTimeout(() => {
+            positions.forEach(pos => {
+              const { page, left, top, field } = pos;
+              let value = "";
+
+              if (field.startsWith("diseases.")) {
+                const diseaseName = field.split(".")[1];
+                value = getDiseaseDisplayValue(patientData.diseases || [], diseaseName);
+              } else {
+                value = getValueFromFieldPath(patientData, field) || "";
+              }
+
+              const canvasWrapper = document.querySelector(
+                `.canvas-wrapper[data-consent-id="${defaultConsent}"][data-page-number="${page}"]`
+              );
+
+              if (!canvasWrapper || !canvasWrapper.fabricCanvas || !value) return;
+
+              const canvas = canvasWrapper.fabricCanvas;
+
+              const text = new fabric.Text(value, {
+                left,
+                top,
+                fontSize: 15,
+                fill: "black",
+                originX: "center",
+                originY: "center",
+                selectable: false
+              });
+
+              canvas.add(text);
+              canvas.renderAll();
+            });
+          }, 1000); // PDF가 로딩된 후 실행되게 타이밍 조절
+        })
+        .catch(err => console.error("❌ JSON 좌표 파일 불러오기 실패:", err));
     };
   </script>
 </body>

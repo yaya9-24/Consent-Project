@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>카카오톡 번호 입력</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        input {
+            padding: 10px;
+            margin: 10px 0;
+            width: 200px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>카카오톡 번호 입력</h2>
+        <p>동의서와 관련 정보를 전송할 카카오톡 번호를 입력해주세요.</p>
+        <input type="text" id="kakao_number" placeholder="010-1234-5678" required>
+        <br>
+        <button onclick="sendKakao()">전송</button>
+    </div>
+
+    <script>
+        function sendKakao() {
+            const kakaoNumber = document.getElementById('kakao_number').value;
+            if (!kakaoNumber) {
+                alert('카카오톡 번호를 입력해주세요.');
+                return;
+            }
+
+            // PDF 파일 경로 (백엔드에서 전달받음)
+            const pdfPath = "{{ pdf_path }}"; // Flask에서 전달
+            const videoLink = "https://youtube.com/surgery-video"; // 수술 영상 링크
+
+            // 백엔드로 카카오톡 번호와 PDF 경로 전송
+            fetch('/send_kakao', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    kakao_number: kakaoNumber,
+                    pdf_path: pdfPath,
+                    video_link: videoLink
+                }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('카카오톡으로 전송되었습니다!');
+                    window.location.href = '/'; // 메인 페이지로 이동
+                } else {
+                    alert('전송 실패: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('전송 중 오류가 발생했습니다.');
+            });
+        }
+    </script>
+</body>
+</html>

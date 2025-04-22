@@ -1,66 +1,429 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>환자 병명 확인</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 40px;
-        }
-        .container {
-            max-width: 600px;
-            margin: auto;
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            background-color: #f9f9f9;
-        }
-        .info-box {
-            background-color: #e0e0e0;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 30px;
-        }
-        .disease-list {
-            text-align: left;
-        }
-        button {
-            margin-top: 20px;
-            padding: 10px;
-            background-color: #007BFF;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>환자 정보 입력</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 40px;
+    }
+    .container {
+      max-width: 1000px;
+      margin: auto;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      background-color: #f9f9f9;
+    }
+    .info-box {
+      background-color: #e0e0e0;
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 30px;
+    }
+    .info-table {
+      width: 100%;
+      border-collapse: collapse;
+      background-color: white;
+      margin-top: 10px;
+    }
+    .info-table th,
+    .info-table td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    .info-input {
+      width: 100%;
+      border: none;
+      background: transparent;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .info-input:focus {
+      outline: none;
+      background-color: #eef6ff;
+    }
+    .disease-list {
+      text-align: left;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px 20px;
+      margin-top: 10px;
+    }
+    .disease-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .surgery-area-options {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .footer-logo {
+      text-align: center;
+      margin-top: 40px;
+    }
+
+    .footer-logo img {
+      width: 150px;
+      opacity: 0.9;
+    }
+    .full-divider {
+      width: 100%;
+      height: 1px;
+      background-color: #aaa;
+      margin: 20px 0;
+      grid-column: 1 / -1;  /* grid 전체 너비 차지하게 */
+    }
+    .full-divider-message {
+      grid-column: 1 / -1;
+      text-align: center;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 20px;
+      display: block;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>환자 병명 확인 </h1>
-        <div class="info-box">
-            <h3>환자 기본 정보</h3>
-            <p><strong>이름:</strong> 홍길동 | <strong>성별:</strong> 남 | <strong>나이:</strong> 45세</p>
-            <p><strong>휴대폰 번호:</strong> 010-1234-5678</p>
-            <p><strong>주소:</strong> 서울특별시 강남구</p>
-            <p><strong>진단명:</strong> 고혈압, 당뇨병</p>
-            <p><strong>주치의 및 시술의:</strong> 김철수 교수</p>
-        </div>
-        <h3>환자의 기저 질환</h3>
-        <div class="disease-list">
-            <p>✔ 질병 1: 당뇨병</p>
-            <p>✔ 질병 2: 고혈압</p>
-            <p>✔ 질병 3: 심혈관질환</p>
-        </div>
-        <button onclick="proceedToConsent()">다음</button>
+  <div class="container">
+    <h1>환자 정보 입력</h1>
+    <div class="info-box">
+      <h3>환자 기본 정보</h3>
+      <table class="info-table">
+        <tr>
+          <th>환자명</th>
+          <td><input class="info-input" type="text" id="input-name" value="홍길동" /></td>
+          <th>성별/나이</th>
+          <td><input class="info-input" type="text" id="input-genderAge" value="남 / 45세" /></td>
+        </tr>
+        <tr>
+          <th>주민등록상의 생년월일</th>
+          <td><input class="info-input" type="text" id="input-birth" oninput="formatBirth(this)" placeholder="2000-01-01"/></td>
+          <th>집전화</th>
+          <td><input class="info-input" type="text" id="input-homephone" oninput="formatPhone(this)" placeholder="02-1234-5678"/></td>
+        </tr>
+        <tr>
+          <th>주소</th>
+          <td colspan="3"><input class="info-input" type="text" id="input-address" value="서울시 영등포구 영등포로"/></td>
+        </tr>
+        <tr>
+          <th>휴대전화</th>
+          <td><input class="info-input" type="text" id="input-phone" oninput="formatPhone(this)" placeholder="010-1234-5678"/></td>
+          <th>진단명</th>
+          <td><input class="info-input" type="text" id="input-diagnosis" value="전방십자인대파열"/></td>
+        </tr>
+        <tr>
+          <th>수술/시술/검사명</th>
+          <td colspan="3"><input class="info-input" type="text" id="input-procedure" value="전방십자인대파열 수술"/></td>
+        </tr>
+
+        <!-- 집도의 1 -->
+        <tr>
+        <th>주치의 (집도의 1)</th>
+        <td>
+            <select class="info-input" id="input-doctor1">
+            <option value="김철수 교수">김철수 교수</option>
+            <option value="이영희 교수">이영희 교수</option>
+            <option value="박민수 교수">박민수 교수</option>
+            <option value="최정훈 교수">최정훈 교수</option>
+            <option value="정하윤 교수">정하윤 교수</option>
+            </select>
+        </td>
+        <td colspan="2">
+            <label><input type="checkbox" id="specialist1" /> 전문의 (전문과목: </label>
+            <input class="info-input" type="text" id="specialty1" style="width: 100px;" />)
+            &nbsp;&nbsp;
+            <label><input type="checkbox" id="general1" /> 일반의 (진료과목: </label>
+            <input class="info-input" type="text" id="department1" style="width: 100px;" />)
+        </td>
+        </tr>
+        <!-- 집도의 2 -->
+        <tr>
+        <th>주치의 (집도의 2)</th>
+        <td>
+            <select class="info-input" id="input-doctor2">
+            <option value="김철수 교수">김철수 교수</option>
+            <option value="이영희 교수">이영희 교수</option>
+            <option value="박민수 교수">박민수 교수</option>
+            <option value="최정훈 교수">최정훈 교수</option>
+            <option value="정하윤 교수">정하윤 교수</option>
+            </select>
+        </td>
+        <td colspan="2">
+            <label><input type="checkbox" id="specialist2" /> 전문의 (전문과목: </label>
+            <input class="info-input" type="text" id="specialty2" style="width: 100px;" />)
+            &nbsp;&nbsp;
+            <label><input type="checkbox" id="general2" /> 일반의 (진료과목: </label>
+            <input class="info-input" type="text" id="department2" style="width: 100px;" />)
+        </td>
+        </tr>
+
+        <!-- 시행일 및 수술 부위 -->
+        <tr>
+          <th>시행예정일</th>
+          <td><input class="info-input" type="date" id="input-date" /></td>
+          <th>수술 부위</th>
+          <td>
+            <div class="surgery-area-options">
+              <label><input type="checkbox" id="side-left" /> 좌</label>
+              <label><input type="checkbox" id="side-right" /> 우</label>
+              <label><input type="checkbox" id="side-both" /> 양측</label>
+              <input class="info-input" type="text" id="input-area" placeholder="예: 무릎" style="flex: 1;" />
+            </div>
+          </td>
+        </tr>
+        <!-- 대리인 관련 정보 -->
+        <tr>
+          <th colspan="4" style="background-color: #f0f0f0;">* 대리인이 하는 경우</th>
+        </tr>
+        <tr>
+          <th>대리인(환자와의 관계)</th>
+          <td><input class="info-input" type="text" id="input-agentRelation" /></td>
+          <th>휴대전화</th>
+          <td colspan="3"><input class="info-input" type="text" id="input-agentPhone" oninput="formatPhone(this)"/></td>
+        </tr>
+        <tr>
+          <th>주민등록상의 생년월일</th>
+          <td><input class="info-input" type="text" id="input-agentBirth" oninput="formatBirth(this)"/></td>
+          <th>집전화</th>
+          <td><input class="info-input" type="text" id="input-agentHomephone" oninput="formatPhone(this)"/></td>
+        </tr>
+        <tr>
+          <th>주소</th>
+          <td colspan="3"><input class="info-input" type="text" id="input-agentAddress" /></td>
+        </tr>
+        <tr>
+          <th colspan="4" style="background-color: #f0f0f0;">* 대리인이 서명하게 된 사유</th>
+        </tr>
+        <tr>
+          <td colspan="4">
+            <label><input type="checkbox" id="reason-mental" /> 환자의 신체적·정신적 장애로 인하여 약정 내용에 대하여 이해하지 못함</label><br/>
+            <label><input type="checkbox" id="reason-minor" /> 미성년자로서 약정 내용에 대하여 이해하지 못함</label><br/>
+            <label><input type="checkbox" id="reason-emotional" /> 설명하는 것이 환자의 심신에 중대한 나쁜 영향을 미칠 것이 명백함</label><br/>
+            <label><input type="checkbox" id="reason-authority" /> 환자 본인이 승낙에 관한 권한을 특정인에게 위임함(이 경우 별도의 위임계약서를 본 동의서에 첨부하여야 합니다)</label><br/>
+            <label>
+              <input type="checkbox" id="reason-etc" />
+              기타
+              [<input class="info-input" type="text" id="reason-etc-text" placeholder="기타 사유 입력" style="margin-left: 10px; width: 300px;" />]
+            </label>
+          </td>
+        </tr>
+      </table>
     </div>
-    <script>
-        function proceedToConsent() {
-            window.location.href = "/consent";
+
+    <h3>환자의 기저 질환</h3>
+    <div class="disease-list">
+      <label class="disease-item">
+        <input type="checkbox" id="disease-history" value="과거병력" />
+        과거병력 (질병·상해 전력)
+        [<input class="info-input" type="text" id="text-history" placeholder="내용 입력" style="flex: 1;" />]
+      </label>
+      <label class="disease-item">
+        <input type="checkbox" id="disease-hyper" value="고혈압" />
+        고혈압
+        [<input class="info-input" type="text" id="text-hyper" placeholder="내용 입력" style="flex: 1;" />]
+      </label>
+      <label class="disease-item">
+        <input type="checkbox" id="disease-diabetes" value="당뇨" />
+        당뇨
+        [<input class="info-input" type="text" id="text-diabetes" placeholder="내용 입력" style="flex: 1;" />]
+      </label>
+      <label class="disease-item">
+        <input type="checkbox" id="disease-heart" value="심장질환" />
+        심장질환 (심근경색증 등)
+        [<input class="info-input" type="text" id="text-heart" placeholder="내용 입력" style="flex: 1;" />]
+      </label>
+      <label class="disease-item">
+        <input type="checkbox" id="disease-brain" value="뇌혈관질환" />
+        뇌혈관질환 (뇌졸중, 파킨슨 등)
+        [<input class="info-input" type="text" id="text-brain" placeholder="내용 입력" style="flex: 1;" />]
+      </label>
+      <label class="disease-item">
+        <input type="checkbox" id="disease-brain" value="고지혈증" />
+        고지혈증
+        [<input class="info-input" type="text" id="text-brain" placeholder="내용 입력" style="flex: 1;" />]
+      </label>
+      <label class="disease-item">
+        <input type="checkbox" id="disease-brain" value="결핵" />
+        결핵
+        [<input class="info-input" type="text" id="text-brain" placeholder="내용 입력" style="flex: 1;" />]
+      </label>
+      <label class="disease-item">
+        <input type="checkbox" id="disease-brain" value="천식" />
+        천식
+        [<input class="info-input" type="text" id="text-brain" placeholder="내용 입력" style="flex: 1;" />]
+      </label>
+      <label class="disease-item">
+        <input type="checkbox" id="disease-brain" value="간염" />
+        간염
+        [<input class="info-input" type="text" id="text-brain" placeholder="내용 입력" style="flex: 1;" />]
+      </label>
+      <label class="disease-item">
+        <input type="checkbox" id="disease-brain" value="암" />
+        암
+        [<input class="info-input" type="text" id="text-brain" placeholder="내용 입력" style="flex: 1;" />]
+      </label>
+      <label class="disease-item">
+        <input type="checkbox" id="disease-brain" value="알레르기" />
+        알레르기
+        [<input class="info-input" type="text" id="text-brain" placeholder="내용 입력" style="flex: 1;" />]
+      </label>
+      <label class="disease-item">
+        <input type="checkbox" id="disease-etc" value="기타" />
+        기타
+        [<input class="info-input" type="text" id="text-etc" placeholder="내용 입력" style="flex: 1;" />]
+      </label>
+
+      <div class="full-divider"></div>
+      <a class="full-divider-message">아래 항목은 직접 입력 필요합니다</a>
+
+      <label class="disease-item">
+        <input type="checkbox" id="disease-medication" value="복용약물" />
+        복용약물
+        [<input class="info-input" type="text" id="text-medication" placeholder="내용 입력" style="flex: 1;" />]
+      </label>
+      <label class="disease-item">
+        <input type="checkbox" id="disease-smoking" value="흡연여부" />
+        흡연여부
+        [<input class="info-input" type="text" id="text-smoking" placeholder="내용 입력" style="flex: 1;" />]
+      </label>
+      <label class="disease-item">
+        <input type="checkbox" id="disease-pregnancy" value="임신 여부" />
+        임신 여부
+        [<input class="info-input" type="text" id="text-pregnancy" placeholder="내용 입력" style="flex: 1;" />]
+      </label>
+      <label class="disease-item">
+        <input type="checkbox" id="disease-special" value="특이체질" />
+        특이체질
+        [<input class="info-input" type="text" id="text-special" placeholder="내용 입력" style="flex: 1;" />]
+      </label>        
+    </div>
+
+    <button>작성된 동의서 확인</button>
+    <button onclick="proceedToConsent()">동의서 작성</button>
+  </div>
+
+  <div class="footer-logo">
+    <img src="{{ url_for('static', filename='images/CM병원 로고.PNG') }}">
+  </div>
+
+  <script>
+    function proceedToConsent() {
+      const diseaseItems = Array.from(document.querySelectorAll(".disease-item"));
+      const diseaseData = diseaseItems.map(item => {
+        const checkbox = item.querySelector("input[type='checkbox']");
+        const textInput = item.querySelector("input[type='text']");
+        return {
+          name: checkbox.value,
+          checked: checkbox.checked,
+          detail: textInput ? textInput.value : ""
+        };
+      });
+  
+      const patientData = {
+        name: document.getElementById("input-name").value,
+        genderAge: document.getElementById("input-genderAge").value,
+        birth: document.getElementById("input-birth").value,
+        homephone: document.getElementById("input-homephone").value,
+        address: document.getElementById("input-address").value,
+        phone: document.getElementById("input-phone").value,
+        diagnosis: document.getElementById("input-diagnosis").value,
+        procedure: document.getElementById("input-procedure").value,
+        doctor1: {
+          name: document.getElementById("input-doctor1").value,
+          isSpecialist: document.getElementById("specialist1").checked,
+          specialty: document.getElementById("specialty1").value,
+          isGeneral: document.getElementById("general1").checked,
+          department: document.getElementById("department1").value,
+        },
+        doctor2: {
+          name: document.getElementById("input-doctor2").value,
+          isSpecialist: document.getElementById("specialist2").checked,
+          specialty: document.getElementById("specialty2").value,
+          isGeneral: document.getElementById("general2").checked,
+          department: document.getElementById("department2").value,
+        },
+        date: document.getElementById("input-date").value,
+        area: {
+          sideLeft: document.getElementById("side-left").checked,
+          sideRight: document.getElementById("side-right").checked,
+          sideBoth: document.getElementById("side-both").checked,
+          part: document.getElementById("input-area").value,
+        },
+        diseases: diseaseData,
+        agent: {
+          relation: document.getElementById("input-agentRelation").value,
+          birth: document.getElementById("input-agentBirth").value,
+          homephone: document.getElementById("input-agentHomephone").value,
+          address: document.getElementById("input-agentAddress").value,
+          phone: document.getElementById("input-agentPhone").value,
+          reasons: {
+            mental: document.getElementById("reason-mental").checked,
+            minor: document.getElementById("reason-minor").checked,
+            emotional: document.getElementById("reason-emotional").checked,
+            authority: document.getElementById("reason-authority").checked,
+            etc: document.getElementById("reason-etc").checked,
+            etcText: document.getElementById("reason-etc-text").value
+          }
         }
-    </script>
+      };
+  
+      sessionStorage.setItem("patientData", JSON.stringify(patientData));
+      window.location.href = "/consent";
+    }
+  </script>
+
+  <script>
+    // 생년월일: YYYYMMDD → YYYY-MM-DD
+    function formatBirth(el) {
+      let val = el.value.replace(/\D/g, ""); // 숫자만
+      if (val.length >= 8) {
+        el.value = val.replace(/(\d{4})(\d{2})(\d{2}).*/, "$1-$2-$3");
+      } else if (val.length >= 6) {
+        el.value = val.replace(/(\d{4})(\d{2})/, "$1-$2");
+      } else {
+        el.value = val;
+      }
+    }
+
+    // 전화번호: 01012345678 → 010-1234-5678
+    function formatPhone(el) {
+      let val = el.value.replace(/\D/g, ""); // 숫자만
+      if (val.startsWith("02")) {
+        // 서울 번호
+        if (val.length > 2 && val.length <= 5) {
+          el.value = val.replace(/(\d{2})(\d{1,3})/, "$1-$2");
+        } else if (val.length <= 9) {
+          el.value = val.replace(/(\d{2})(\d{3,4})(\d{0,4})/, "$1-$2-$3").replace(/-$/, "");
+        } else {
+          el.value = val.slice(0, 10).replace(/(\d{2})(\d{4})(\d{4})/, "$1-$2-$3");
+        }
+      } else {
+        // 휴대폰 또는 일반 번호
+        if (val.length <= 10) {
+          el.value = val.replace(/(\d{3})(\d{3,4})(\d{0,4})/, "$1-$2-$3").replace(/-$/, "");
+        } else {
+          el.value = val.slice(0, 11).replace(/(\d{3})(\d{4})(\d{4})/, "$1-$2-$3");
+        }
+      }
+    }
+  </script>
 </body>
 </html>
